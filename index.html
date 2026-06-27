@@ -4,31 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#110d20" />
-  <title>성공 매타 — 성공 매일 타로</title>
-  <meta name="description" content="78장의 타로 카드에서 질문에 맞는 배열을 직접 뽑고, 꼬리 질문까지 이어서 확인하는 무료 타로 웹앱입니다." />
-  <meta name="robots" content="index,follow,max-image-preview:large" />
-  <link rel="canonical" href="https://dldbgml1112-blip.github.io/successmeta/" />
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:locale" content="ko_KR" />
-  <meta property="og:site_name" content="성공 매타" />
-  <meta property="og:url" content="https://dldbgml1112-blip.github.io/successmeta/" />
-  <meta property="og:title" content="성공 매타 — 성공 매일 타로" />
-  <meta property="og:description" content="78장의 카드에서 질문에 맞는 배열을 직접 뽑고, 남은 덱으로 꼬리 질문까지 이어서 확인해보세요." />
-  <meta property="og:image" content="https://dldbgml1112-blip.github.io/successmeta/og-image.png" />
-  <meta property="og:image:secure_url" content="https://dldbgml1112-blip.github.io/successmeta/og-image.png" />
-  <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="성공 매타 — 78장 타로 카드 리딩 웹앱" />
-
-  <!-- X / Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="성공 매타 — 성공 매일 타로" />
-  <meta name="twitter:description" content="질문에 맞는 타로 배열을 직접 뽑고 꼬리 질문까지 이어서 확인해보세요." />
-  <meta name="twitter:image" content="https://dldbgml1112-blip.github.io/successmeta/og-image.png" />
-  <meta name="twitter:image:alt" content="성공 매타 — 78장 타로 카드 리딩 웹앱" />
+  <title>성공 매타 — 타로 카드 리딩</title>
+  <meta name="description" content="78장 타로 카드를 직접 뽑고 결과 이미지와 맞춤 AI 질문 문구를 저장하는 무료 타로 웹앱" />
   <style>
 :root {
   --bg: #0d0a16;
@@ -1316,8 +1293,7 @@ const DECK = buildDeck();
 const state = {
   question: '', category: 'love', spread: 'one', tone: 'direct',
   shuffled: [], selected: [], followUps: [], pendingFollowUp: null, drawContext: 'base', savedId: null, isSelecting: false,
-  pendingSelectionIds: [], wheelIndex: 0, suppressClickUntil: 0,
-  drawEpoch: 0, confirmTimer: 0
+  pendingSelectionIds: [], wheelIndex: 0, suppressClickUntil: 0
 };
 
 const el = {
@@ -1543,20 +1519,8 @@ function showView(name) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function invalidatePendingDraw() {
-  state.drawEpoch += 1;
-  if (state.confirmTimer) {
-    window.clearTimeout(state.confirmTimer);
-    state.confirmTimer = 0;
-  }
-  state.isSelecting = false;
-  state.pendingSelectionIds = [];
-  if (el.cancelDraw) el.cancelDraw.disabled = false;
-}
-
 function beginReading(event) {
   event.preventDefault();
-  invalidatePendingDraw();
   const question = el.question.value.trim();
   if (question.length < 4) {
     toast('질문을 조금 더 구체적으로 적어주세요.');
@@ -1576,6 +1540,7 @@ function beginReading(event) {
   state.pendingSelectionIds = [];
   state.savedId = null;
   state.isSelecting = false;
+  state.pendingSelectionIds = [];
   state.wheelIndex = Math.floor(state.shuffled.length / 2);
   prepareDrawHeader();
   renderDeck();
@@ -1770,12 +1735,6 @@ function selectCard(cardId, button) {
   const session = currentDrawSession();
   const needed = session.positions.length;
   if (Date.now() < state.suppressClickUntil || state.isSelecting || !button) return;
-  if (getUsedCardIds().has(cardId)) {
-    removeUsedCardsFromDeck();
-    renderDeck();
-    toast('이미 뽑은 카드는 다시 선택할 수 없습니다.');
-    return;
-  }
   if (!state.shuffled.some(card => card.id === cardId)) return;
 
   const selectedIndex = state.pendingSelectionIds.indexOf(cardId);
@@ -1806,61 +1765,21 @@ function confirmCardSelection() {
 
   state.isSelecting = true;
   el.confirmSelection.disabled = true;
-  el.cancelDraw.disabled = true;
   el.deckPrev.disabled = true;
   el.deckNext.disabled = true;
   el.deckStage.classList.add('is-confirming');
 
   const chosenIds = [...state.pendingSelectionIds];
-  const usedIds = getUsedCardIds();
-  if (chosenIds.some(id => usedIds.has(id)) || new Set(chosenIds).size !== chosenIds.length) {
-    state.isSelecting = false;
-    el.cancelDraw.disabled = false;
-    state.pendingSelectionIds = [];
-    removeUsedCardsFromDeck();
-    renderDeck();
-    toast('중복 카드 선택을 차단했습니다. 다시 골라주세요.');
-    return;
-  }
   const chosenCards = chosenIds.map(id => state.shuffled.find(card => card.id === id)).filter(Boolean);
   if (chosenCards.length !== needed) {
     state.isSelecting = false;
-    el.cancelDraw.disabled = false;
-    state.pendingSelectionIds = [];
-    toast('선택 상태가 바뀌어 카드를 다시 골라야 합니다.');
+    toast('선택 상태를 확인할 수 없습니다. 다시 선택해주세요.');
     renderDeck();
     return;
   }
 
-  const commitEpoch = state.drawEpoch;
-  const commitContext = state.drawContext;
-  const commitFollowUpId = state.pendingFollowUp?.id || null;
-  state.confirmTimer = window.setTimeout(() => {
-    state.confirmTimer = 0;
-    const sameSession = state.drawEpoch === commitEpoch
-      && state.drawContext === commitContext
-      && (commitContext !== 'followup' || state.pendingFollowUp?.id === commitFollowUpId)
-      && chosenIds.length === state.pendingSelectionIds.length
-      && chosenIds.every((id, index) => state.pendingSelectionIds[index] === id);
-
-    if (!sameSession) {
-      state.isSelecting = false;
-      el.cancelDraw.disabled = false;
-      return;
-    }
-
+  window.setTimeout(() => {
     const activeSession = currentDrawSession();
-    const latestUsedIds = getUsedCardIds();
-    if (chosenIds.some(id => latestUsedIds.has(id)) || new Set(chosenIds).size !== chosenIds.length) {
-      state.isSelecting = false;
-      el.cancelDraw.disabled = false;
-      state.pendingSelectionIds = [];
-      removeUsedCardsFromDeck();
-      renderDeck();
-      toast('다른 리딩에서 이미 사용된 카드를 감지해 선택을 취소했습니다.');
-      return;
-    }
-
     activeSession.cards.length = 0;
     chosenCards.forEach((card, index) => {
       activeSession.cards.push({
@@ -1874,43 +1793,15 @@ function confirmCardSelection() {
     state.pendingSelectionIds = [];
     state.wheelIndex = clamp(state.wheelIndex, 0, Math.max(0, state.shuffled.length - 1));
     state.isSelecting = false;
-    el.cancelDraw.disabled = false;
     completeCurrentDraw();
   }, 390);
 }
 
 function completeCurrentDraw() {
   if (state.drawContext === 'followup' && state.pendingFollowUp) {
-    const existingIds = new Set([
-      ...state.selected.map(item => item.card.id),
-      ...state.followUps.flatMap(followUp => followUp.cards.map(item => item.card.id))
-    ]);
-    const pendingIds = state.pendingFollowUp.cards.map(item => item.card.id);
-    const pendingHasDuplicate = pendingIds.length !== new Set(pendingIds).size
-      || pendingIds.some(id => existingIds.has(id));
-
-    if (pendingHasDuplicate) {
-      console.error('Duplicate follow-up tarot card invariant violated.');
-      state.pendingFollowUp = null;
-      state.drawContext = 'base';
-      removeUsedCardsFromDeck();
-      renderSelectedCards();
-      updateFollowUpPanel();
-      showView('result');
-      toast('중복 카드가 감지되어 이번 추가 리딩은 저장하지 않았습니다.');
-      return;
-    }
-
     state.followUps.push(state.pendingFollowUp);
     state.pendingFollowUp = null;
     state.drawContext = 'base';
-  }
-  removeUsedCardsFromDeck();
-  if (hasDuplicateDrawnCards()) {
-    console.error('Duplicate tarot card invariant violated.');
-    toast('기존 기록에 중복 카드가 있어 추가 리딩을 중단했습니다.');
-    revealResult();
-    return;
   }
   revealResult();
 }
@@ -1951,32 +1842,6 @@ function totalDrawnCardCount() {
   return state.selected.length + state.followUps.reduce((sum, item) => sum + item.cards.length, 0);
 }
 
-function getUsedCardIds() {
-  return new Set([
-    ...state.selected.map(item => item.card.id),
-    ...state.followUps.flatMap(followUp => followUp.cards.map(item => item.card.id)),
-    ...(state.pendingFollowUp?.cards || []).map(item => item.card.id)
-  ]);
-}
-
-function removeUsedCardsFromDeck() {
-  const usedIds = getUsedCardIds();
-  const seen = new Set();
-  state.shuffled = state.shuffled.filter(card => {
-    if (!card || !card.id || usedIds.has(card.id) || seen.has(card.id)) return false;
-    seen.add(card.id);
-    return true;
-  });
-}
-
-function hasDuplicateDrawnCards() {
-  const ids = [
-    ...state.selected.map(item => item.card.id),
-    ...state.followUps.flatMap(followUp => followUp.cards.map(item => item.card.id))
-  ];
-  return ids.length !== new Set(ids).size;
-}
-
 function updateFollowUpPanel() {
   const suggestions = FOLLOWUP_SUGGESTIONS[state.category] || [];
   el.followUpSuggestions.innerHTML = suggestions.map(question => `<button class="followup-suggestion" type="button" data-followup-suggestion="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join('');
@@ -1996,7 +1861,6 @@ function updateFollowUpPanel() {
 }
 
 function startFollowUpReading() {
-  removeUsedCardsFromDeck();
   const question = el.followUpQuestion.value.trim();
   if (question.length < 3) {
     toast('추가로 궁금한 질문을 적어주세요.');
@@ -2019,7 +1883,6 @@ function startFollowUpReading() {
     return;
   }
 
-  invalidatePendingDraw();
   state.pendingFollowUp = {
     id: crypto.randomUUID ? crypto.randomUUID() : `followup-${Date.now()}`,
     question,
@@ -2035,11 +1898,11 @@ function startFollowUpReading() {
 }
 
 function cancelCurrentDraw() {
-  const wasFollowUp = state.drawContext === 'followup' && state.pendingFollowUp;
-  invalidatePendingDraw();
-  if (wasFollowUp) {
+  if (state.drawContext === 'followup' && state.pendingFollowUp) {
     state.pendingFollowUp = null;
     state.drawContext = 'base';
+    state.isSelecting = false;
+    state.pendingSelectionIds = [];
     renderSelectedCards();
     updateFollowUpPanel();
     showView('result');
@@ -2540,10 +2403,6 @@ async function copyAiPrompt() {
 
 function saveCurrentReading() {
   if (!state.selected.length) return;
-  if (hasDuplicateDrawnCards()) {
-    toast('중복 카드가 감지된 결과는 기록에 저장하지 않았습니다.');
-    return;
-  }
   const history = loadHistory();
   const record = {
     id: state.savedId || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
@@ -2585,12 +2444,8 @@ function saveCurrentReading() {
 }
 
 function loadHistory() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem('tarot-history-v1') || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem('tarot-history-v1') || '[]'); }
+  catch { return []; }
 }
 
 function deleteHistoryItem(id) {
@@ -2636,21 +2491,18 @@ function openHistoryRecord(item) {
     return;
   }
 
-  const nextQuestion = item.question || '저장한 타로 질문';
-  const nextCategory = CATEGORY_LABELS[item.category] ? item.category : 'other';
-  const nextSpread = SPREAD_LIBRARY[item.spread] ? item.spread : inferSpreadFromCardCount(item.cards.length);
-  const nextTone = TONE_LABELS[item.tone] ? item.tone : 'direct';
-  const baseDefinition = getSpreadDefinition(nextSpread, nextCategory);
-  const nextSelected = item.cards
+  state.question = item.question || '저장한 타로 질문';
+  state.category = CATEGORY_LABELS[item.category] ? item.category : 'other';
+  state.spread = SPREAD_LIBRARY[item.spread] ? item.spread : inferSpreadFromCardCount(item.cards.length);
+  state.tone = TONE_LABELS[item.tone] ? item.tone : 'direct';
+
+  const baseDefinition = getSpreadDefinition(state.spread, state.category);
+  state.selected = item.cards
     .map(card => hydrateSavedCard(card, baseDefinition.positions))
     .filter(Boolean);
 
-  const nextFollowUps = (Array.isArray(item.followUps) ? item.followUps : []).map((followUp, index) => {
-    const spreadKey = FOLLOWUP_SPREADS[followUp.spread]
-      ? followUp.spread
-      : inferSpreadFromCardCount((followUp.cards || []).length) === 'five'
-        ? 'deep5'
-        : ((followUp.cards || []).length === 3 ? 'tail3' : 'clarify1');
+  state.followUps = (Array.isArray(item.followUps) ? item.followUps : []).map((followUp, index) => {
+    const spreadKey = FOLLOWUP_SPREADS[followUp.spread] ? followUp.spread : inferSpreadFromCardCount((followUp.cards || []).length) === 'five' ? 'deep5' : ((followUp.cards || []).length === 3 ? 'tail3' : 'clarify1');
     const definition = getFollowUpDefinition(spreadKey);
     return {
       id: followUp.id || `saved-followup-${index}-${Date.now()}`,
@@ -2660,33 +2512,15 @@ function openHistoryRecord(item) {
     };
   }).filter(followUp => followUp.cards.length);
 
-  if (!nextSelected.length) {
+  if (!state.selected.length) {
     toast('저장된 카드와 현재 덱을 연결하지 못했습니다.');
     return;
   }
 
-  const restoredIds = [
-    ...nextSelected.map(item => item.card.id),
-    ...nextFollowUps.flatMap(followUp => followUp.cards.map(item => item.card.id))
-  ];
-  if (restoredIds.length !== new Set(restoredIds).size) {
-    toast('이전 기록에 같은 카드가 중복되어 있어 안전하게 열지 않았습니다.');
-    return;
-  }
-  if (restoredIds.length > 30) {
-    toast('이 기록은 현재 허용된 최대 카드 수를 초과해 열 수 없습니다.');
-    return;
-  }
-
-  invalidatePendingDraw();
-  state.question = nextQuestion;
-  state.category = nextCategory;
-  state.spread = nextSpread;
-  state.tone = nextTone;
-  state.selected = nextSelected;
-  state.followUps = nextFollowUps;
-
-  const usedCardIds = new Set(restoredIds);
+  const usedCardIds = new Set([
+    ...state.selected.map(item => item.card.id),
+    ...state.followUps.flatMap(followUp => followUp.cards.map(item => item.card.id))
+  ]);
   state.shuffled = shuffle(DECK.filter(card => !usedCardIds.has(card.id)));
   state.pendingFollowUp = null;
   state.drawContext = 'base';
@@ -2765,14 +2599,11 @@ function toast(message) {
 }
 
 function resetHome() {
-  invalidatePendingDraw();
-  state.shuffled = [];
   state.selected = [];
   state.followUps = [];
   state.pendingFollowUp = null;
   state.drawContext = 'base';
   state.savedId = null;
-  state.wheelIndex = 0;
   showView('home');
 }
 
