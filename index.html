@@ -415,10 +415,10 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
     line-height: 1.65;
   }
   .ai-handoff {
-    padding: 19px 17px;
+    padding: 18px 16px;
     font-size: 13px;
   }
-  .ai-handoff strong { font-size: 17px; }
+  .ai-handoff strong { font-size: 16px; }
 }
 
 #resultView .section-heading { margin-bottom: 18px; text-align: center; }
@@ -443,29 +443,40 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
 .result-share-zone .result-actions { margin-top: 10px; }
 .result-actions .primary-btn { margin: 0; justify-content: center; }
 .ai-handoff {
+  position: relative;
   max-width: 850px;
   margin: 0 auto;
-  padding: 22px 24px;
-  border: 2px solid rgba(230,209,166,.86);
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(202,170,114,.27), rgba(147,118,217,.17));
-  color: #f5edf9;
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.7;
-  letter-spacing: -.018em;
+  padding: 20px 24px;
+  overflow: hidden;
+  border: 1px solid rgba(202,170,114,.24);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.016));
+  color: #cfc5d8;
+  font-size: 13px;
+  font-weight: 520;
+  line-height: 1.72;
+  letter-spacing: -.012em;
   text-align: center;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 16px 38px rgba(0,0,0,.32);
-  text-shadow: 0 1px 12px rgba(0,0,0,.45);
+  box-shadow: 0 12px 30px rgba(0,0,0,.17), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.ai-handoff::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 112px;
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(230,209,166,.92), transparent);
 }
 .ai-handoff strong {
   display: block;
-  margin-bottom: 6px;
-  color: #fff8e8;
-  font-size: 19px;
-  font-weight: 900;
+  margin-bottom: 7px;
+  color: #f4e8c9;
+  font-size: 17px;
+  font-weight: 780;
   line-height: 1.4;
-  letter-spacing: -.03em;
+  letter-spacing: -.025em;
 }
 .ai-handoff br { display: none; }
 .result-share-zone [data-copy-prompt] {
