@@ -1,0 +1,2703 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#110d20" />
+  <title>성공 매타 — 타로 카드 리딩</title>
+  <meta name="description" content="78장 타로 카드를 직접 뽑고 결과 이미지와 맞춤 AI 질문 문구를 저장하는 무료 타로 웹앱" />
+  <style>
+:root {
+  --bg: #0d0a16;
+  --panel: rgba(29, 23, 47, 0.90);
+  --panel-solid: #1d172f;
+  --line: rgba(255, 255, 255, 0.11);
+  --text: #f7f1ff;
+  --muted: #c8bdd4;
+  --accent: #caaa72;
+  --accent-soft: #e6d1a6;
+  --violet: #9376d9;
+  --danger: #e897a0;
+  --radius-lg: 28px;
+  --radius-md: 18px;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
+* { box-sizing: border-box; }
+html { min-height: 100%; background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(111, 76, 163, 0.19), transparent 34%),
+    radial-gradient(circle at 85% 80%, rgba(164, 117, 63, 0.12), transparent 30%),
+    var(--bg);
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+
+/* Constellation background — fixed to the viewport, kept in the outer gutters */
+body { position: relative; isolation: isolate; }
+.topbar, .app-shell { position: relative; z-index: 3; }
+.ambient { z-index: 1; }
+
+.celestial-sky {
+  --sky-shift: 0px;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+}
+.celestial-sky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 92% 13%, rgba(145,112,212,.18), transparent 25%),
+    radial-gradient(circle at 5% 58%, rgba(201,166,104,.12), transparent 24%),
+    radial-gradient(circle at 90% 91%, rgba(118,92,184,.12), transparent 23%);
+}
+/* Dark center veil keeps all text and controls readable while the constellations stay visible at the edges. */
+.celestial-sky::after {
+  content: "";
+  position: absolute;
+  top: -8%;
+  bottom: -8%;
+  left: 50%;
+  width: min(980px, 78vw);
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(13,10,22,.80) 0%, rgba(13,10,22,.58) 54%, rgba(13,10,22,0) 82%);
+  filter: blur(12px);
+}
+.constellation-cluster {
+  position: absolute;
+  overflow: visible;
+  opacity: .90;
+  filter: drop-shadow(0 12px 28px rgba(0,0,0,.22));
+  will-change: transform;
+}
+/* Desktop: decorative clusters sit in the side gutters instead of behind the copy. */
+.constellation-top-right {
+  width: clamp(330px, 29vw, 430px);
+  top: 96px;
+  right: -112px;
+  transform: translate3d(0, calc(var(--sky-shift) * -.18), 0);
+}
+.constellation-left-mid {
+  width: clamp(285px, 23vw, 350px);
+  top: 55%;
+  left: -118px;
+  transform: translate3d(0, calc(-50% + var(--sky-shift) * .12), 0);
+}
+.constellation-bottom-right {
+  width: clamp(300px, 25vw, 390px);
+  right: -124px;
+  bottom: 42px;
+  transform: translate3d(0, calc(var(--sky-shift) * -.10), 0);
+}
+
+.constellation-path {
+  fill: none;
+  stroke: rgba(210,194,242,.52);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.constellation-path.gold { stroke: rgba(226,195,134,.50); }
+.constellation-arc {
+  fill: none;
+  stroke: rgba(204,186,236,.24);
+  stroke-width: 1;
+  stroke-dasharray: 3 8;
+  vector-effect: non-scaling-stroke;
+}
+.star-glow { fill: rgba(183,151,235,.14); }
+.star-glow.gold { fill: rgba(224,190,126,.14); }
+.star-core {
+  fill: #eee5ff;
+  stroke: rgba(153,118,216,.88);
+  stroke-width: 2.1;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 7px rgba(178,145,235,.68));
+}
+.star-core.gold {
+  fill: #fff1ca;
+  stroke: rgba(207,169,101,.9);
+  filter: drop-shadow(0 0 7px rgba(225,188,120,.64));
+}
+.star-spark {
+  fill: none;
+  stroke: rgba(245,237,255,.84);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .constellation-top-right .featured-star,
+  .constellation-bottom-right .featured-star { animation: celestialPulse 6.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .constellation-left-mid .featured-star { animation: celestialPulse 8.3s ease-in-out 1.2s infinite; transform-box: fill-box; transform-origin: center; }
+}
+@keyframes celestialPulse {
+  0%, 100% { opacity: .74; transform: scale(.95); }
+  50% { opacity: 1; transform: scale(1.07); }
+}
+
+@media (max-width: 1180px) {
+  .constellation-top-right { right: -124px; }
+  .constellation-left-mid { left: -128px; }
+  .constellation-bottom-right { right: -136px; }
+  .celestial-sky::after { width: min(920px, 84vw); }
+}
+
+@media (max-width: 760px) {
+  .celestial-sky::after {
+    width: 92vw;
+    background: radial-gradient(ellipse at center, rgba(13,10,22,.88) 0%, rgba(13,10,22,.66) 58%, rgba(13,10,22,0) 86%);
+  }
+  .constellation-cluster { opacity: .84; }
+  .constellation-top-right {
+    width: 262px;
+    top: 84px;
+    right: -116px;
+    transform: translate3d(0, calc(var(--sky-shift) * -.10), 0);
+  }
+  .constellation-left-mid {
+    width: 228px;
+    top: auto;
+    bottom: 10%;
+    left: -104px;
+    transform: translate3d(0, calc(var(--sky-shift) * .06), 0);
+  }
+  .constellation-bottom-right { display: none; }
+  .constellation-path { stroke-width: 1.55; }
+  .constellation-arc { stroke-width: .9; }
+}
+
+button, input, textarea, select { font: inherit; }
+button { color: inherit; }
+
+.ambient { position: fixed; width: 360px; height: 360px; border-radius: 50%; filter: blur(100px); opacity: .13; pointer-events: none; z-index: -1; }
+.ambient-one { top: -160px; right: -60px; background: #8c61d0; }
+.ambient-two { bottom: -180px; left: -90px; background: #ba8742; }
+
+.topbar {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 0; font-weight: 750; cursor: pointer; }
+.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(202, 170, 114, .52); border-radius: 50%; color: var(--accent-soft); }
+.top-actions { display: flex; gap: 6px; }
+.ghost-btn, .text-btn, .icon-btn { border: 0; background: transparent; cursor: pointer; }
+.ghost-btn { padding: 9px 12px; color: var(--muted); }
+.ghost-btn:hover { color: var(--text); }
+
+.app-shell { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 55px 0 90px; }
+.view { display: none; animation: rise .45s ease both; }
+.view.is-active { display: block; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+#homeView { display: none; grid-template-columns: minmax(0, .92fr) minmax(420px, .72fr); gap: 80px; align-items: center; }
+#homeView.is-active { display: grid; }
+.hero-copy { padding-bottom: 50px; }
+.eyebrow { margin: 0 0 16px; color: var(--accent); letter-spacing: .16em; font-size: 11px; font-weight: 800; }
+h1 { margin: 0; font-size: clamp(44px, 6vw, 76px); line-height: 1.08; letter-spacing: -.055em; font-weight: 760; }
+.hero-tagline { position: relative; display: block; width: max-content; max-width: 100%; margin: 14px 0 0; padding: 0 2px 10px 0; color: var(--accent-soft); font-size: 18px; line-height: 1.4; font-weight: 780; letter-spacing: -.02em; }
+.hero-tagline::after { content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; border-radius: 999px; background: linear-gradient(90deg, rgba(216,188,131,.95), rgba(147,118,217,.58), transparent); }
+.hero-description { max-width: 580px; margin: 24px 0 0; color: #d1c7dc; font-size: 17px; line-height: 1.75; text-shadow: 0 1px 18px rgba(0,0,0,.38); }
+
+.glass-card { background: var(--panel); border: 1px solid rgba(255,255,255,.13); box-shadow: var(--shadow); backdrop-filter: blur(28px) saturate(112%); }
+.reading-form { padding: 28px; border-radius: var(--radius-lg); position: relative; }
+.field-label, legend { display: block; margin-bottom: 10px; color: #e6ddef; font-size: 13px; font-weight: 720; }
+textarea, input[type="url"], input[type="password"], select {
+  width: 100%; border: 1px solid var(--line); background: rgba(8, 6, 14, .48); color: var(--text); border-radius: 14px; outline: none; transition: .2s ease;
+}
+textarea { min-height: 118px; resize: vertical; padding: 16px 17px; line-height: 1.65; }
+input[type="url"], input[type="password"], select { padding: 13px 14px; }
+textarea:focus, input:focus, select:focus { border-color: rgba(202, 170, 114, .72); box-shadow: 0 0 0 3px rgba(202, 170, 114, .09); }
+textarea::placeholder, input::placeholder { color: #776c88; }
+.input-meta { margin-top: 6px; text-align: right; color: #7f748f; font-size: 11px; }
+fieldset { margin: 22px 0 0; padding: 0; border: 0; }
+.option-grid { display: grid; gap: 8px; }
+.category-grid { grid-template-columns: repeat(3, 1fr); }
+.choice, .spread-choice { cursor: pointer; }
+.choice input, .spread-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice span { display: block; padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.choice input:checked + span, .spread-choice input:checked + span { border-color: rgba(202, 170, 114, .68); color: var(--text); background: rgba(202, 170, 114, .1); }
+.spread-grid { grid-template-columns: repeat(3, 1fr); }
+.spread-choice span { min-height: 71px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; }
+.spread-choice strong { font-size: 13px; }
+.spread-choice small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.spread-choice em { align-self: flex-start; padding: 3px 7px; border-radius: 999px; background: rgba(202,170,114,.1); color: var(--accent-soft); font-size: 9px; font-style: normal; font-weight: 800; letter-spacing: .04em; }
+.spread-choice input:checked + span em { background: rgba(202,170,114,.2); }
+select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+
+.primary-btn, .secondary-btn, .danger-btn {
+  border: 0; border-radius: 14px; cursor: pointer; font-weight: 760; transition: transform .18s ease, filter .18s ease, background .18s ease;
+}
+.primary-btn { width: 100%; margin-top: 24px; min-height: 52px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #d7bd88, #b98a52); color: #1b130b; }
+.primary-btn:hover, .secondary-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.secondary-btn { min-height: 50px; padding: 0 22px; border: 1px solid var(--line); background: rgba(255,255,255,.045); }
+.danger-btn { width: 100%; margin-top: 18px; min-height: 44px; color: var(--danger); background: rgba(232,151,160,.08); border: 1px solid rgba(232,151,160,.18); }
+.disclaimer { grid-column: 1 / -1; margin: -20px 0 0; text-align: center; color: #746a82; font-size: 11px; }
+
+.section-heading { margin-bottom: 32px; }
+.section-heading.centered { text-align: center; }
+h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
+.section-heading > p:last-child { color: var(--muted); }
+#drawView { text-align: center; }
+.draw-heading { max-width: 820px; margin-left: auto; margin-right: auto; }
+.draw-question { margin: 8px auto 18px; max-width: 760px; font-size: clamp(23px, 4vw, 36px); line-height: 1.38; letter-spacing: -.025em; word-break: keep-all; overflow-wrap: anywhere; }
+.draw-instruction { margin: 0; color: var(--text); font-size: clamp(16px, 2.5vw, 19px); font-weight: 720; line-height: 1.55; }
+.draw-count { margin: 8px 0 0; color: var(--gold) !important; font-size: 15px; font-weight: 760; }
+.draw-progress { display: none; }
+.deck-carousel {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+}
+.deck-viewport {
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+}
+.deck-stage {
+  --pick-card-width: 116px;
+  --pick-card-overlap: -72px;
+  min-height: 410px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 50px 28px 68px;
+  perspective: 1400px;
+  touch-action: pan-y;
+  user-select: none;
+  outline: none;
+}
+.deck-stage:focus-visible { border-radius: 24px; box-shadow: inset 0 0 0 1px rgba(202,170,114,.34); }
+.deck-stage.page-enter-next { animation: deckPageNext .34s cubic-bezier(.2,.75,.2,1); }
+.deck-stage.page-enter-prev { animation: deckPagePrev .34s cubic-bezier(.2,.75,.2,1); }
+@keyframes deckPageNext { from { opacity: .25; transform: translateX(42px); } to { opacity: 1; transform: none; } }
+@keyframes deckPagePrev { from { opacity: .25; transform: translateX(-42px); } to { opacity: 1; transform: none; } }
+.deck-nav {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(202,170,114,.24);
+  border-radius: 50%;
+  background: rgba(255,255,255,.045);
+  color: var(--accent-soft);
+  font-family: Georgia, serif;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .2s ease, background .2s ease, opacity .2s ease, border-color .2s ease;
+}
+.deck-nav:hover:not(:disabled), .deck-nav:focus-visible:not(:disabled) { transform: scale(1.06); background: rgba(202,170,114,.12); border-color: rgba(202,170,114,.55); outline: none; }
+.deck-nav:disabled { opacity: .22; cursor: default; }
+.deck-pagination { display: none !important; }
+.deck-page-track { width: min(210px, 42vw); height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.08); }
+.deck-page-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--violet)); transition: width .3s ease; }
+.pick-card { --offset: 0; --rotate: 0deg; flex: 0 0 var(--pick-card-width); width: var(--pick-card-width); aspect-ratio: 0.57; margin-left: var(--pick-card-overlap); transform: translateY(var(--offset)) rotate(var(--rotate)); border: 0; border-radius: 12px; background: transparent; padding: 0; cursor: pointer; transition: transform .24s ease, filter .24s ease, opacity .24s ease; filter: drop-shadow(0 18px 22px rgba(0,0,0,.34)); }
+.pick-card:first-child { margin-left: 0; }
+.pick-card:hover, .pick-card:focus-visible { transform: translateY(calc(var(--offset) - 20px)) rotate(var(--rotate)); filter: drop-shadow(0 22px 25px rgba(0,0,0,.48)) brightness(1.08); z-index: 120 !important; outline: none; }
+.pick-card:disabled { cursor: default; }
+.deck-stage.is-picking .pick-card:not(.is-selected) {
+  pointer-events: none;
+  opacity: .5;
+  filter: drop-shadow(0 12px 16px rgba(0,0,0,.26)) brightness(.72);
+  transform: translateY(calc(var(--offset) + 12px)) rotate(var(--rotate)) scale(.96);
+}
+.pick-card.is-selected {
+  pointer-events: none;
+  z-index: 999 !important;
+  animation: cardPickOut .56s cubic-bezier(.18,.78,.24,1) forwards;
+}
+@keyframes cardPickOut {
+  0% { opacity: 1; transform: translateY(var(--offset)) rotate(var(--rotate)) scale(1); }
+  48% { opacity: 1; transform: translateY(-92px) rotate(var(--rotate)) scale(1.14); filter: drop-shadow(0 34px 34px rgba(0,0,0,.55)) brightness(1.1); }
+  100% { opacity: 0; transform: translateY(-168px) rotate(var(--rotate)) scale(1.18); filter: drop-shadow(0 40px 38px rgba(0,0,0,.28)) brightness(1.08); }
+}
+.pick-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; pointer-events: none; user-select: none; }
+.text-btn { color: var(--muted); text-decoration: underline; text-underline-offset: 4px; }
+
+#resultView .section-heading { margin-bottom: 14px; }
+.result-question { max-width: 720px; font-size: 16px; line-height: 1.7; }
+.selected-cards { display: flex; justify-content: center; gap: 28px; margin: 30px 0 44px; flex-wrap: wrap; }
+.revealed-card { width: min(220px, 28vw); text-align: center; animation: cardIn .65s cubic-bezier(.2,.75,.2,1) both; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(22px) rotateY(70deg); } to { opacity: 1; transform: none; } }
+.revealed-card .card-image-wrap { aspect-ratio: .57; border-radius: 17px; overflow: hidden; box-shadow: 0 24px 44px rgba(0,0,0,.42); }
+.revealed-card img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.revealed-card img.reversed { transform: rotate(180deg); }
+.revealed-card .position { margin: 15px 0 5px; color: var(--accent); font-size: 11px; letter-spacing: .13em; font-weight: 800; }
+.revealed-card h3 { margin: 0; font-size: 16px; }
+.revealed-card .direction { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+
+.result-share-zone { max-width: 850px; margin: -10px auto 24px; position: relative; top: 0; }
+.result-actions { max-width: 850px; margin: 18px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.result-share-zone .result-actions { margin-top: 10px; }
+.result-actions .primary-btn { margin: 0; justify-content: center; }
+.ai-handoff { max-width: 850px; margin: 0 auto; padding: 18px 20px; border: 1px solid rgba(202,170,114,.22); border-radius: 18px; background: rgba(202,170,114,.06); color: #d8cede; line-height: 1.65; font-size: 13px; }
+.ai-handoff strong { color: var(--accent-soft); }
+.followup-results { display: grid; gap: 28px; margin: 8px 0 32px; }
+.followup-result { padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: rgba(255,255,255,.025); }
+.followup-result-head { max-width: 760px; margin: 0 auto 8px; text-align: center; }
+.followup-result-head .eyebrow { margin-bottom: 9px; }
+.followup-result-head h3 { margin: 0; font-size: clamp(20px, 3vw, 28px); line-height: 1.4; letter-spacing: -.025em; }
+.followup-result .selected-cards { margin: 24px 0 4px; }
+.followup-result .revealed-card { width: min(185px, 23vw); }
+.followup-zone { max-width: 850px; margin: 0 auto 24px; padding: 24px; border: 1px solid rgba(147,118,217,.22); border-radius: 24px; background: linear-gradient(145deg, rgba(147,118,217,.075), rgba(202,170,114,.045)); }
+.followup-zone h3 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+.followup-description { margin: 9px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.followup-input { min-height: 82px; }
+.followup-suggestions { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 16px; }
+.followup-suggestion { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: rgba(255,255,255,.035); color: var(--muted); font-size: 11px; cursor: pointer; }
+.followup-suggestion:hover { border-color: rgba(202,170,114,.48); color: var(--text); }
+.followup-mode-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.followup-mode { cursor: pointer; }
+.followup-mode input { position: absolute; opacity: 0; pointer-events: none; }
+.followup-mode span { min-height: 72px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; }
+.followup-mode strong { font-size: 13px; }
+.followup-mode small { color: var(--muted); font-size: 10px; line-height: 1.4; }
+.followup-mode input:checked + span { border-color: rgba(202,170,114,.68); background: rgba(202,170,114,.1); }
+.followup-start { margin-top: 12px; }
+.followup-limit { margin: 10px 0 0; color: #7f748f; text-align: center; font-size: 10px; line-height: 1.55; }
+.history-followups { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.history-followup { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.history-followup strong { color: var(--accent-soft); }
+.image-dialog { width: min(720px, calc(100% - 24px)); overflow: hidden; }
+.image-preview-wrap { max-height: 46vh; overflow: auto; margin: 14px 0; padding: 10px; border: 1px solid var(--line); border-radius: 18px; background: #0b0811; text-align: center; }
+.image-preview { display: block; width: 100%; height: auto; border-radius: 12px; }
+.image-save-note { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.image-dialog-actions { position: sticky; bottom: 0; z-index: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-top: 10px; background: linear-gradient(180deg, rgba(23,18,33,0), #171221 26%); }
+.image-dialog-actions .primary-btn, .image-dialog-actions .secondary-btn { width: 100%; margin: 0; justify-content: center; text-decoration: none; display: flex; align-items: center; }
+.image-dialog-actions button:disabled, .image-dialog-actions [aria-disabled="true"] { opacity: .48; cursor: wait; transform: none; pointer-events: none; }
+.image-preview { -webkit-touch-callout: default; user-select: auto; }
+
+.app-dialog { width: min(620px, calc(100% - 30px)); max-height: min(760px, calc(100vh - 30px)); padding: 25px; border-radius: 24px; border: 1px solid var(--line); background: #171221; color: var(--text); box-shadow: var(--shadow); }
+.app-dialog::backdrop { background: rgba(3,2,7,.72); backdrop-filter: blur(7px); }
+.dialog-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+.dialog-head h2 { font-size: 28px; }
+.icon-btn { font-size: 30px; color: var(--muted); }
+.history-list { display: grid; gap: 12px; max-height: 510px; overflow-y: auto; }
+.history-empty { color: var(--muted); text-align: center; padding: 70px 20px; }
+.history-item { position: relative; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.025); cursor: pointer; transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.history-item:hover, .history-item:focus-visible { transform: translateY(-2px); border-color: rgba(224,190,126,.42); background: rgba(202,170,114,.055); box-shadow: 0 12px 30px rgba(0,0,0,.22); outline: none; }
+.history-item::after { content: '눌러서 결과 다시 보기'; display: block; margin-top: 13px; color: var(--accent-soft); font-size: 10px; font-weight: 760; opacity: .8; }
+.history-item-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; color: var(--muted); font-size: 11px; }
+.history-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+.history-delete { flex: 0 0 auto; border: 1px solid rgba(232,151,160,.22); border-radius: 999px; padding: 5px 9px; background: rgba(232,151,160,.07); color: var(--danger); font: inherit; cursor: pointer; }
+.history-delete:hover { background: rgba(232,151,160,.13); }
+.history-item h3 { margin: 12px 0 8px; font-size: 16px; line-height: 1.45; }
+.history-item p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.history-cards { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.history-cards span { padding: 5px 8px; border-radius: 999px; background: rgba(202,170,114,.09); color: var(--accent-soft); font-size: 10px; }
+.dialog-copy { color: var(--muted); line-height: 1.7; }
+.copy-prompt-box { width: 100%; min-height: 290px; margin: 14px 0 16px; padding: 16px; resize: vertical; border: 1px solid var(--line); border-radius: 16px; background: #0f0b17; color: var(--text); font: inherit; line-height: 1.65; outline: none; }
+.copy-prompt-box:focus { border-color: rgba(216,188,131,.72); box-shadow: 0 0 0 3px rgba(216,188,131,.1); }
+.copy-dialog-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.copy-dialog-actions button { flex: 1 1 160px; }
+.settings-dialog .field-label { margin-top: 16px; }
+.toggle-row { display: flex; align-items: center; gap: 10px; margin-top: 18px; color: #ded5e5; font-size: 13px; }
+.toggle-row input { accent-color: var(--accent); }
+.settings-note { margin: 12px 0 0; text-align: center; color: #7d718d; font-size: 11px; }
+
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px); z-index: 99; padding: 12px 16px; border: 1px solid var(--line); border-radius: 999px; background: #252032; box-shadow: var(--shadow); color: var(--text); font-size: 13px; opacity: 0; pointer-events: none; transition: .25s ease; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 860px) {
+  .app-shell { padding-top: 24px; }
+  #homeView.is-active { display: block; }
+  .hero-copy { padding: 15px 0 36px; }
+  .reading-form { max-width: 620px; }
+  .disclaimer { margin: 18px 0 0; }
+  .deck-carousel { grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 7px; }
+  .deck-nav { width: 40px; height: 40px; font-size: 28px; }
+  .deck-stage { --pick-card-width: 106px; --pick-card-overlap: -64px; min-height: 380px; padding: 46px 12px 62px; }
+}
+@media (max-width: 560px) {
+  .topbar { width: min(100% - 26px, 1120px); height: 70px; }
+  .brand span:last-child { display: none; }
+  .app-shell { width: min(100% - 26px, 1120px); }
+  h1 { font-size: 44px; }
+  .hero-tagline { margin-top: 12px; padding-bottom: 8px; font-size: 16px; }
+  .hero-description { margin-top: 21px; font-size: 16px; line-height: 1.72; }
+  .reading-form { padding: 20px; }
+  .category-grid { grid-template-columns: repeat(2, 1fr); }
+  .spread-grid { grid-template-columns: 1fr; }
+  .spread-choice span { min-height: auto; }
+  .deck-carousel { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 3px; }
+  .deck-nav { width: 32px; height: 32px; font-size: 24px; }
+  .deck-stage { --pick-card-width: 94px; --pick-card-overlap: -52px; min-height: 340px; padding: 40px 4px 56px; }
+  .deck-pagination { margin-top: -24px; }
+  .pick-card { border-radius: 10px; }
+  .revealed-card { width: min(180px, 44vw); }
+  .selected-cards { gap: 14px; }
+  .card-reading-row { grid-template-columns: 1fr; gap: 6px; }
+  .result-actions, .image-dialog-actions { grid-template-columns: 1fr; }
+  .followup-mode-grid { grid-template-columns: 1fr; }
+  .followup-zone, .followup-result { padding: 18px; }
+  .followup-result .revealed-card { width: min(170px, 43vw); }
+  #resultView .section-heading { margin-bottom: 10px; }
+  .result-share-zone { margin: -8px auto 20px; top: 0; }
+  .image-preview-wrap { max-height: 40vh; }
+}
+@keyframes pulse { from { opacity: .45; transform: scale(.85); } to { opacity: 1; transform: scale(1.2); } }
+
+  
+/* Continuous card wheel */
+.deck-carousel {
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 8px;
+}
+.deck-viewport {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  background: radial-gradient(ellipse at 50% 72%, rgba(202,170,114,.12), transparent 24%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+}
+.deck-viewport::-webkit-scrollbar { display: none; }
+.deck-viewport::after {
+  content: '';
+  position: sticky;
+  left: 50%;
+  display: block;
+  width: 1px;
+  height: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 13px rgba(215,189,136,.75));
+}
+.deck-stage {
+  --wheel-card-width: clamp(82px, 11vw, 116px);
+  min-height: 390px;
+  width: max-content;
+  min-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(8px, 1.5vw, 18px);
+  padding-top: 50px;
+  padding-bottom: 72px;
+  perspective: 1400px;
+  touch-action: pan-x pan-y;
+  user-select: none;
+  outline: none;
+}
+.deck-stage::before {
+  display: none;
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 45px;
+  width: min(128px, 28vw);
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(202,170,114,.22), transparent 70%);
+  pointer-events: none;
+}
+.pick-card {
+  --wheel-y: 0px;
+  --wheel-rotate: 0deg;
+  --wheel-scale: 1;
+  --wheel-opacity: 1;
+  flex: 0 0 var(--wheel-card-width);
+  width: var(--wheel-card-width);
+  aspect-ratio: .57;
+  margin-left: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  transform: translateY(var(--wheel-y)) rotate(var(--wheel-rotate)) scale(var(--wheel-scale));
+  opacity: var(--wheel-opacity);
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease, opacity .16s ease;
+  filter: drop-shadow(0 16px 20px rgba(0,0,0,.32));
+}
+.pick-card:first-child { margin-left: 0; }
+.pick-card.is-centered {
+  filter: drop-shadow(0 25px 30px rgba(0,0,0,.5)) brightness(1.1);
+}
+.pick-card:hover, .pick-card:focus-visible {
+  transform: translateY(calc(var(--wheel-y) - 12px)) rotate(var(--wheel-rotate)) scale(calc(var(--wheel-scale) + .04));
+  filter: drop-shadow(0 26px 28px rgba(0,0,0,.5)) brightness(1.1);
+  z-index: 150 !important;
+  outline: none;
+}
+.deck-stage.is-picking .pick-card:not(.is-selected) {
+  pointer-events: none;
+  opacity: .36;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.22)) brightness(.68);
+  transform: translateY(calc(var(--wheel-y) + 14px)) rotate(var(--wheel-rotate)) scale(calc(var(--wheel-scale) * .94));
+}
+.pick-card.is-selected {
+  pointer-events: none;
+  z-index: 999 !important;
+  animation: cardPickOutWheel .56s cubic-bezier(.18,.78,.24,1) forwards;
+}
+@keyframes cardPickOutWheel {
+  0% { opacity: 1; transform: translateY(var(--wheel-y)) rotate(var(--wheel-rotate)) scale(var(--wheel-scale)); }
+  48% { opacity: 1; transform: translateY(-96px) rotate(0deg) scale(1.2); filter: drop-shadow(0 34px 34px rgba(0,0,0,.55)) brightness(1.12); }
+  100% { opacity: 0; transform: translateY(-174px) rotate(0deg) scale(1.24); filter: drop-shadow(0 40px 38px rgba(0,0,0,.28)) brightness(1.08); }
+}
+.deck-pagination { margin-top: -22px; }
+.deck-page-track span { transition: width .18s ease; }
+/* Card choice stays in its original wheel slot until the user confirms. */
+.pick-card.is-chosen {
+  transform: translateY(calc(var(--wheel-y) - 46px)) rotate(var(--wheel-rotate)) scale(calc(var(--wheel-scale) + .055));
+  filter: drop-shadow(0 32px 32px rgba(0,0,0,.56)) brightness(1.12);
+  z-index: 400 !important;
+}
+.pick-card.is-chosen:hover,
+.pick-card.is-chosen:focus-visible {
+  transform: translateY(calc(var(--wheel-y) - 50px)) rotate(var(--wheel-rotate)) scale(calc(var(--wheel-scale) + .065));
+}
+.pick-card.is-chosen::before {
+  content: '✓';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%) rotate(calc(var(--wheel-rotate) * -1));
+  border: 1px solid rgba(255,245,214,.78);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0d59d, #b98a52);
+  color: #21160b;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 7px 18px rgba(0,0,0,.42);
+  pointer-events: none;
+}
+.pick-card.is-chosen::after {
+  content: '다시 눌러 취소';
+  position: absolute;
+  left: 50%;
+  bottom: -27px;
+  width: max-content;
+  transform: translateX(-50%) rotate(calc(var(--wheel-rotate) * -1));
+  color: var(--accent-soft);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: -.02em;
+  text-shadow: 0 2px 8px #09070d;
+  pointer-events: none;
+}
+.deck-stage.is-confirming .pick-card:not(.is-chosen) {
+  opacity: .25;
+  pointer-events: none;
+}
+.deck-stage.is-confirming .pick-card.is-chosen {
+  pointer-events: none;
+  animation: confirmChosenCard .38s cubic-bezier(.2,.75,.2,1) forwards;
+}
+@keyframes confirmChosenCard {
+  to { opacity: 0; transform: translateY(calc(var(--wheel-y) - 130px)) rotate(0deg) scale(1.16); }
+}
+.draw-confirm-btn #confirmCardCount { display: none; }
+.draw-selection-actions {
+  width: min(420px, calc(100% - 36px));
+  margin: -7px auto 0;
+  display: grid;
+  gap: 12px;
+  justify-items: stretch;
+}
+.draw-confirm-btn {
+  width: 100%;
+  margin: 0;
+  min-height: 50px;
+}
+.draw-confirm-btn:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+  filter: saturate(.35);
+  transform: none;
+}
+.draw-selection-actions .text-btn { justify-self: center; }
+
+@media (max-width: 600px) {
+  .deck-carousel { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 2px; }
+  .deck-stage { --wheel-card-width: clamp(78px, 24vw, 94px); min-height: 360px; gap: 8px; padding-top: 58px; padding-bottom: 74px; }
+  .deck-nav { width: 34px; height: 42px; font-size: 28px; }
+  .pick-card.is-chosen {
+    transform: translateY(calc(var(--wheel-y) - 38px)) rotate(var(--wheel-rotate)) scale(calc(var(--wheel-scale) + .045));
+  }
+  .pick-card.is-chosen:hover, .pick-card.is-chosen:focus-visible {
+    transform: translateY(calc(var(--wheel-y) - 41px)) rotate(var(--wheel-rotate)) scale(calc(var(--wheel-scale) + .05));
+  }
+  .pick-card.is-chosen::after { bottom: -24px; font-size: 9px; }
+}
+
+
+
+/* Final constellation layout: static within the opening screen, never follows the scroll. */
+.celestial-sky {
+  position: absolute;
+  inset: 70px 0 auto;
+  height: 760px;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+}
+.celestial-sky::before {
+  background:
+    radial-gradient(circle at 54% 28%, rgba(137,105,207,.14), transparent 28%),
+    radial-gradient(circle at 17% 54%, rgba(197,158,91,.08), transparent 24%),
+    radial-gradient(circle at 88% 78%, rgba(117,91,180,.09), transparent 26%);
+}
+.celestial-sky::after { display: none; }
+.constellation-cluster {
+  opacity: .68;
+  filter: drop-shadow(0 0 22px rgba(123,88,190,.18));
+  animation: none !important;
+  will-change: auto;
+}
+.constellation-top-right {
+  width: 430px;
+  top: 10px;
+  left: calc(50% - 20px);
+  right: auto;
+  transform: rotate(-6deg);
+}
+.constellation-left-mid {
+  width: 320px;
+  top: 300px;
+  left: calc(50% - 650px);
+  bottom: auto;
+  transform: rotate(8deg);
+  opacity: .48;
+}
+.constellation-bottom-right {
+  width: 350px;
+  top: 420px;
+  left: calc(50% + 250px);
+  right: auto;
+  bottom: auto;
+  transform: rotate(7deg);
+  opacity: .42;
+}
+
+.app-shell { padding-top: 26px; }
+#homeView {
+  grid-template-columns: minmax(300px, .82fr) minmax(390px, .9fr);
+  gap: clamp(34px, 4vw, 58px);
+  align-items: start;
+}
+.hero-copy {
+  position: relative;
+  padding: 42px 0 34px;
+}
+.hero-copy::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -26px -36px -28px -48px;
+  border-radius: 46px;
+  background: radial-gradient(circle at 30% 38%, rgba(83,58,124,.20), rgba(13,10,22,0) 68%);
+  pointer-events: none;
+}
+.reading-form { margin-top: 0; }
+
+@media (min-width: 721px) and (max-width: 860px) {
+  #homeView.is-active { display: grid; }
+  #homeView {
+    grid-template-columns: minmax(280px, .78fr) minmax(360px, 1fr);
+    gap: 28px;
+  }
+  .hero-copy { padding: 32px 0 24px; }
+  .reading-form { max-width: none; }
+  .celestial-sky { height: 720px; }
+  .constellation-top-right { width: 350px; left: 43%; top: 40px; opacity: .58; }
+  .constellation-left-mid { width: 250px; left: -95px; top: 330px; opacity: .34; }
+  .constellation-bottom-right { width: 270px; left: auto; right: -90px; top: 470px; opacity: .28; }
+}
+
+@media (max-width: 720px) {
+  .celestial-sky {
+    inset: 60px 0 auto;
+    height: 590px;
+  }
+  .constellation-top-right {
+    display: block;
+    width: 255px;
+    top: 8px;
+    left: auto;
+    right: -92px;
+    transform: rotate(-8deg);
+    opacity: .50;
+  }
+  .constellation-left-mid {
+    display: block;
+    width: 205px;
+    top: 330px;
+    left: -92px;
+    bottom: auto;
+    transform: rotate(8deg);
+    opacity: .30;
+  }
+  .constellation-bottom-right { display: none; }
+  .app-shell { padding-top: 10px; }
+  #homeView.is-active { display: block; }
+  .hero-copy { padding: 24px 0 28px; }
+  .hero-copy::before { inset: -18px -20px -14px; }
+}
+
+</style>
+</head>
+<body>
+
+  <div class="celestial-sky" aria-hidden="true">
+    <svg class="constellation-cluster constellation-top-right" viewBox="0 0 430 300" role="presentation">
+      <path class="constellation-arc" d="M44 216 C132 46 302 24 408 112"/>
+      <path class="constellation-path" d="M46 208 L124 134 L212 166 L292 82 L382 118"/>
+      <path class="constellation-path gold" d="M124 134 L160 228 L250 244 L292 82"/>
+      <path class="constellation-path" d="M212 166 L250 244 L350 222"/>
+      <g transform="translate(46 208)"><circle class="star-glow" r="14"/><circle class="star-core" r="4.5"/></g>
+      <g class="featured-star" transform="translate(124 134)"><circle class="star-glow gold" r="18"/><circle class="star-core gold" r="5.5"/><path class="star-spark" d="M0 -13 V-8 M0 8 V13 M-13 0 H-8 M8 0 H13"/></g>
+      <g transform="translate(212 166)"><circle class="star-glow" r="13"/><circle class="star-core" r="4.2"/></g>
+      <g transform="translate(292 82)"><circle class="star-glow" r="16"/><circle class="star-core" r="5"/></g>
+      <g transform="translate(382 118)"><circle class="star-glow gold" r="12"/><circle class="star-core gold" r="4"/></g>
+      <g transform="translate(160 228)"><circle class="star-glow" r="11"/><circle class="star-core" r="3.7"/></g>
+      <g transform="translate(250 244)"><circle class="star-glow gold" r="14"/><circle class="star-core gold" r="4.5"/></g>
+      <g transform="translate(350 222)"><circle class="star-glow" r="10"/><circle class="star-core" r="3.4"/></g>
+    </svg>
+
+    <svg class="constellation-cluster constellation-left-mid" viewBox="0 0 350 330" role="presentation">
+      <path class="constellation-arc" d="M16 248 C74 80 234 38 332 118"/>
+      <path class="constellation-path gold" d="M28 244 L92 182 L152 214 L226 136 L314 172"/>
+      <path class="constellation-path" d="M92 182 L76 96 L170 70 L226 136"/>
+      <path class="constellation-path" d="M152 214 L184 286 L278 304"/>
+      <g transform="translate(28 244)"><circle class="star-glow gold" r="12"/><circle class="star-core gold" r="4"/></g>
+      <g class="featured-star" transform="translate(92 182)"><circle class="star-glow" r="18"/><circle class="star-core" r="5.5"/><path class="star-spark" d="M0 -13 V-8 M0 8 V13 M-13 0 H-8 M8 0 H13"/></g>
+      <g transform="translate(152 214)"><circle class="star-glow" r="12"/><circle class="star-core" r="4"/></g>
+      <g transform="translate(226 136)"><circle class="star-glow gold" r="15"/><circle class="star-core gold" r="4.8"/></g>
+      <g transform="translate(314 172)"><circle class="star-glow" r="10"/><circle class="star-core" r="3.5"/></g>
+      <g transform="translate(76 96)"><circle class="star-glow" r="10"/><circle class="star-core" r="3.5"/></g>
+      <g transform="translate(170 70)"><circle class="star-glow gold" r="13"/><circle class="star-core gold" r="4.2"/></g>
+      <g transform="translate(184 286)"><circle class="star-glow" r="10"/><circle class="star-core" r="3.5"/></g>
+      <g transform="translate(278 304)"><circle class="star-glow gold" r="11"/><circle class="star-core gold" r="3.7"/></g>
+    </svg>
+
+    <svg class="constellation-cluster constellation-bottom-right" viewBox="0 0 390 270" role="presentation">
+      <path class="constellation-arc" d="M30 220 C118 74 254 42 366 108"/>
+      <path class="constellation-path" d="M42 204 L112 128 L196 154 L276 76 L352 132"/>
+      <path class="constellation-path gold" d="M112 128 L150 226 L242 236 L276 76"/>
+      <g transform="translate(42 204)"><circle class="star-glow" r="11"/><circle class="star-core" r="3.7"/></g>
+      <g transform="translate(112 128)"><circle class="star-glow gold" r="14"/><circle class="star-core gold" r="4.5"/></g>
+      <g class="featured-star" transform="translate(196 154)"><circle class="star-glow" r="18"/><circle class="star-core" r="5.5"/><path class="star-spark" d="M0 -13 V-8 M0 8 V13 M-13 0 H-8 M8 0 H13"/></g>
+      <g transform="translate(276 76)"><circle class="star-glow gold" r="15"/><circle class="star-core gold" r="4.8"/></g>
+      <g transform="translate(352 132)"><circle class="star-glow" r="11"/><circle class="star-core" r="3.7"/></g>
+      <g transform="translate(150 226)"><circle class="star-glow" r="10"/><circle class="star-core" r="3.4"/></g>
+      <g transform="translate(242 236)"><circle class="star-glow gold" r="12"/><circle class="star-core gold" r="4"/></g>
+    </svg>
+  </div>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="topbar">
+    <button class="brand" type="button" data-go-home>
+      <span class="brand-mark">✦</span>
+      <span>성공 매타</span>
+    </button>
+    <nav class="top-actions" aria-label="주요 메뉴">
+      <button class="ghost-btn" type="button" data-open-history>기록</button>
+    </nav>
+  </header>
+
+  <main class="app-shell">
+    <section class="view is-active" id="homeView" aria-labelledby="homeTitle">
+      <div class="hero-copy">
+        <p class="eyebrow">78 CARDS · UPRIGHT & REVERSED · PRIVATE READING</p>
+        <h1 id="homeTitle">성공 매타</h1>
+        <p class="hero-tagline">성공 매일 타로, 성공 매타.</p>
+        <p class="hero-description">1장부터 10장까지 질문에 맞는 배열을 고르고, 남은 덱에서 꼬리 질문 카드도 이어서 뽑을 수 있습니다. 결과 이미지와 맞춤 질문을 평소 사용하는 AI에 보내 해석받아보세요.</p>
+      </div>
+
+      <form class="reading-form glass-card" id="readingForm">
+        <label class="field-label" for="question">지금 가장 궁금한 일</label>
+        <textarea id="question" maxlength="240" placeholder="예: 이번에 지원한 회사에서 면접 연락이 올까요?" required></textarea>
+        <div class="input-meta"><span id="questionCount">0</span>/240</div>
+
+        <fieldset>
+          <legend>상담 분야</legend>
+          <div class="option-grid category-grid" id="categoryOptions">
+            <label class="choice"><input type="radio" name="category" value="love" checked /><span>연애</span></label>
+            <label class="choice"><input type="radio" name="category" value="career" /><span>취업·직장</span></label>
+            <label class="choice"><input type="radio" name="category" value="money" /><span>금전</span></label>
+            <label class="choice"><input type="radio" name="category" value="relationship" /><span>인간관계</span></label>
+            <label class="choice"><input type="radio" name="category" value="decision" /><span>선택</span></label>
+            <label class="choice"><input type="radio" name="category" value="other" /><span>기타</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>카드 배열</legend>
+          <div class="option-grid spread-grid" id="spreadOptions">
+            <label class="spread-choice">
+              <input type="radio" name="spread" value="one" checked />
+              <span><em>1장</em><strong>핵심 답</strong><small>질문의 중심과 지금 필요한 메시지</small></span>
+            </label>
+            <label class="spread-choice">
+              <input type="radio" name="spread" value="three" />
+              <span><em>3장</em><strong>시간의 흐름</strong><small>과거 · 현재 · 미래</small></span>
+            </label>
+            <label class="spread-choice">
+              <input type="radio" name="spread" value="five" />
+              <span><em>5장</em><strong>문제 해결</strong><small>원인 · 장애물 · 조언 · 결과까지</small></span>
+            </label>
+            <label class="spread-choice">
+              <input type="radio" name="spread" value="decision" />
+              <span><em>7장</em><strong>두 선택 비교</strong><small>A와 B의 장점 · 위험 · 결과</small></span>
+            </label>
+            <label class="spread-choice">
+              <input type="radio" name="spread" value="deep" />
+              <span><em>7장</em><strong>분야별 심층</strong><small>선택한 상담 분야에 맞춘 배열</small></span>
+            </label>
+            <label class="spread-choice">
+              <input type="radio" name="spread" value="celtic" />
+              <span><em>10장</em><strong>켈틱 크로스</strong><small>복잡한 상황을 입체적으로 정밀 분석</small></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>해석 말투</legend>
+          <select id="tone" name="tone">
+            <option value="direct">직설적인 팩트형</option>
+            <option value="warm">따뜻한 위로형</option>
+            <option value="mystic">신비로운 점술형</option>
+            <option value="friend">친구처럼 편한 해석</option>
+          </select>
+        </fieldset>
+
+        <button class="primary-btn" type="submit"><span>카드 섞기</span><span aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="disclaimer">타로는 오락과 자기 성찰을 위한 참고 자료이며, 의료·법률·재정 등 중요한 결정을 대신하지 않습니다.</p>
+    </section>
+
+    <section class="view" id="drawView" aria-labelledby="drawTitle">
+      <div class="section-heading centered draw-heading">
+        <p class="eyebrow" id="drawEyebrow">질문 내용</p>
+        <h2 id="drawQuestion" class="draw-question"></h2>
+        <p id="drawTitle" class="draw-instruction">질문을 생각하며 마음이 가는 카드를 고르세요.</p>
+        <p id="drawHint" class="draw-count">1장을 선택하세요.</p>
+        <p id="drawProgress" class="draw-progress" aria-live="polite">CARD 0 / 1</p>
+      </div>
+      <div class="deck-carousel" aria-label="타로 카드 선택 영역">
+        <button class="deck-nav deck-prev" id="deckPrev" type="button" aria-label="이전 카드 묶음">‹</button>
+        <div class="deck-viewport" id="deckViewport">
+          <div class="deck-stage" id="deckStage" aria-live="polite" tabindex="0" aria-label="카드 휠을 좌우로 돌려 카드를 선택하세요"></div>
+        </div>
+        <button class="deck-nav deck-next" id="deckNext" type="button" aria-label="다음 카드 묶음">›</button>
+      </div>
+      <div class="deck-pagination" aria-hidden="true">
+        <span id="deckPageInfo"></span>
+        <div class="deck-page-track" aria-hidden="true"><span id="deckPageBar"></span></div>
+      </div>
+      <div class="draw-selection-actions">
+        <button class="primary-btn draw-confirm-btn" type="button" id="confirmCardSelection" disabled>
+          <span>선택 완료</span><span id="confirmCardCount">0 / 1</span>
+        </button>
+        <button class="text-btn" type="button" id="cancelDrawButton" data-cancel-draw>질문 다시 쓰기</button>
+      </div>
+    </section>
+
+    <section class="view" id="resultView" aria-labelledby="resultTitle">
+      <div class="section-heading">
+        <p class="eyebrow" id="resultMeta">TODAY'S READING</p>
+        <h2 id="resultTitle">당신이 뽑은 카드</h2>
+        <p class="result-question" id="resultQuestion"></p>
+      </div>
+
+      <div class="selected-cards" id="selectedCards"></div>
+      <div class="followup-results" id="followUpResults"></div>
+
+      <section class="followup-zone" aria-labelledby="followUpTitle">
+        <p class="eyebrow">FOLLOW-UP READING</p>
+        <h3 id="followUpTitle">꼬리 질문으로 더 뽑기</h3>
+        <p class="followup-description">기본 리딩에서 궁금증이 남은 부분을 새 질문으로 좁혀, 같은 덱의 남은 카드에서 이어서 뽑습니다.</p>
+        <label class="field-label" for="followUpQuestion">추가로 궁금한 질문</label>
+        <textarea id="followUpQuestion" class="followup-input" maxlength="180" placeholder="예: 연락이 늦어지는 가장 큰 이유는 무엇일까요?"></textarea>
+        <div class="followup-suggestions" id="followUpSuggestions" aria-label="추천 추가 질문"></div>
+        <div class="followup-mode-grid" id="followUpModeOptions">
+          <label class="followup-mode"><input type="radio" name="followUpMode" value="clarify1" checked /><span><strong>한 장 보충</strong><small>질문에 대한 핵심 답 하나</small></span></label>
+          <label class="followup-mode"><input type="radio" name="followUpMode" value="tail3" /><span><strong>세 장 꼬리 리딩</strong><small>핵심 단서 · 숨은 변수 · 다음 흐름</small></span></label>
+          <label class="followup-mode"><input type="radio" name="followUpMode" value="deep5" /><span><strong>다섯 장 깊이 보기</strong><small>원인부터 조언과 결과까지</small></span></label>
+        </div>
+        <button class="secondary-btn followup-start" type="button" data-start-followup>추가 카드 뽑기</button>
+        <p class="followup-limit" id="followUpLimitNote">추가 카드는 기본 카드와 합쳐 최대 30장까지 뽑을 수 있습니다.</p>
+      </section>
+
+      <div class="result-share-zone">
+        <div class="ai-handoff">
+          <strong>이제 AI에게 해석을 맡겨보세요</strong><br />결과 이미지를 저장하고 ‘AI 질문 복사’를 누른 뒤, ChatGPT·Gemini·Claude 등 평소 사용하는 AI에 이미지와 문구를 함께 보내세요.
+        </div>
+        <div class="result-actions">
+          <button class="primary-btn" type="button" data-download-result>결과 이미지 PNG 저장</button>
+          <button class="secondary-btn" type="button" data-copy-prompt>AI 질문 복사</button>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <button class="secondary-btn" type="button" data-save-reading>기록 저장</button>
+        <button class="secondary-btn" type="button" data-new-reading>새 질문 보기</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="historyDialog" class="app-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">MY ARCHIVE</p><h2>타로 기록</h2></div>
+      <button class="icon-btn" type="button" data-close-history aria-label="닫기">×</button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+    <button class="danger-btn" type="button" data-clear-history>기록 전체 삭제</button>
+  </dialog>
+
+  <dialog id="copyDialog" class="app-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">COPY PROMPT</p><h2>AI 질문 문구</h2></div>
+      <button class="icon-btn" type="button" data-close-copy aria-label="닫기">×</button>
+    </div>
+    <p class="dialog-copy">브라우저가 자동 복사를 막았습니다. 아래 문구를 길게 누르거나 전체 선택한 뒤 복사해주세요.</p>
+    <textarea id="copyPromptBox" class="copy-prompt-box" readonly></textarea>
+    <div class="copy-dialog-actions">
+      <button class="primary-btn" type="button" data-select-copy>전체 선택</button>
+      <button class="secondary-btn" type="button" data-retry-copy>다시 복사</button>
+    </div>
+  </dialog>
+
+  <dialog id="imageDialog" class="app-dialog image-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">SAVE IMAGE</p><h2>결과 이미지 PNG 저장</h2></div>
+      <button class="icon-btn" type="button" data-close-image aria-label="닫기">×</button>
+    </div>
+    <p class="image-save-note" id="imageSaveNote">PNG를 만드는 중입니다. 준비되면 다운로드를 자동으로 시작합니다.</p>
+    <div class="image-preview-wrap">
+      <img id="resultImagePreview" class="image-preview" alt="저장할 타로 결과 이미지 미리보기" />
+    </div>
+    <div class="image-dialog-actions">
+      <a id="resultImageDownloadLink" class="primary-btn" href="#" data-download-png aria-disabled="true">PNG 다시 저장하기</a>
+      <button class="secondary-btn" type="button" data-open-image disabled>이미지 크게 열기</button>
+    </div>
+  </dialog>
+
+  <template id="historyItemTemplate">
+    <article class="history-item">
+      <div class="history-item-head">
+        <div class="history-meta"><span class="history-date"></span><span class="history-category"></span></div>
+        <button class="history-delete" type="button" data-delete-history-item>선택 삭제</button>
+      </div>
+      <h3 class="history-question"></h3>
+      <div class="history-cards"></div>
+    </article>
+  </template>
+
+  <script>
+'use strict';
+
+const CATEGORY_LABELS = {
+  love: '연애',
+  career: '취업·직장',
+  money: '금전',
+  relationship: '인간관계',
+  decision: '선택',
+  other: '기타'
+};
+
+const TONE_LABELS = {
+  direct: '직설적인 팩트형',
+  warm: '따뜻한 위로형',
+  mystic: '신비로운 점술형',
+  friend: '친구처럼 편한 해석'
+};
+
+const SPREAD_LIBRARY = {
+  one: {
+    label: '원 카드',
+    flowTitle: '한 장 안의 흐름',
+    rule: `원 카드 배열입니다. 존재하지 않는 카드 조합이나 앞뒤 카드를 만들어내지 마세요. 한 장 안에서 질문의 핵심 원인, 현재 작용하는 힘, 이 흐름이 이어질 때의 방향과 현실적인 조언을 연결해 읽어주세요. 카드 하나가 모든 상황을 설명한다고 과장하지 마세요.`,
+    positions: [{ key: 'core', label: '핵심 카드', description: '질문의 중심 흐름과 지금 필요한 메시지' }]
+  },
+  three: {
+    label: '과거·현재·미래',
+    flowTitle: '시간에 따라 바뀌는 흐름',
+    rule: `과거는 현재를 만든 배경과 이미 지나온 패턴, 현재는 지금 가장 강하게 작용하는 힘, 미래는 현재 흐름이 유지될 경우의 가능성으로 읽어주세요. 미래 카드를 확정된 예언으로 다루지 말고, 과거가 현재에 무엇을 남겼고 현재가 미래를 어떻게 바꾸는지 연결하세요.`,
+    positions: [
+      { key: 'past', label: '과거', description: '현재 상황을 만든 배경과 원인' },
+      { key: 'present', label: '현재', description: '지금 가장 강하게 작용하는 흐름' },
+      { key: 'future', label: '미래', description: '현재 흐름이 이어질 때의 가능성' }
+    ]
+  },
+  five: {
+    label: '문제 해결 5장',
+    flowTitle: '문제의 구조와 해결 경로',
+    rule: `현재 상황에서 시작해 숨은 원인과 실제 장애물을 구분하고, 조언 카드가 무엇을 바꿔야 하는지, 예상 결과가 그 행동 이후 어떤 방향을 보여주는지 인과관계로 연결해주세요. 숨은 원인과 장애물을 같은 말로 반복하지 마세요.`,
+    positions: [
+      { key: 'situation', label: '현재 상황', description: '지금 벌어지고 있는 핵심 상태' },
+      { key: 'cause', label: '숨은 원인', description: '겉으로 드러나지 않은 배경과 동기' },
+      { key: 'obstacle', label: '가장 큰 장애물', description: '흐름을 막거나 지연시키는 요소' },
+      { key: 'advice', label: '필요한 행동', description: '상황을 바꾸기 위해 취할 태도와 행동' },
+      { key: 'outcome', label: '예상 결과', description: '조언을 따를 때 이어질 가능성' }
+    ]
+  },
+  decision: {
+    label: '두 선택 비교 7장',
+    flowTitle: 'A와 B가 각각 만드는 흐름',
+    rule: `질문에 적힌 두 선택지를 A와 B로 놓고 비교하세요. 현재 상황을 공통 출발점으로 읽은 뒤 A와 B 각각의 이점, 위험, 예상 결과를 분리해 설명해주세요. 질문에 없는 선택지를 새로 만들지 말고, 단순히 더 좋은 카드가 많은 쪽을 고르지 말며 질문자의 목적과 감당해야 할 대가까지 비교하세요.`,
+    positions: [
+      { key: 'situation', label: '현재 상황', description: '두 선택을 앞둔 공통 조건' },
+      { key: 'a_gain', label: '선택 A의 이점', description: 'A를 택할 때 얻는 것' },
+      { key: 'a_risk', label: '선택 A의 위험', description: 'A를 택할 때 감수할 것' },
+      { key: 'a_outcome', label: '선택 A의 결과', description: 'A의 흐름이 이어질 때의 가능성' },
+      { key: 'b_gain', label: '선택 B의 이점', description: 'B를 택할 때 얻는 것' },
+      { key: 'b_risk', label: '선택 B의 위험', description: 'B를 택할 때 감수할 것' },
+      { key: 'b_outcome', label: '선택 B의 결과', description: 'B의 흐름이 이어질 때의 가능성' }
+    ]
+  },
+  deep: {
+    label: '분야별 심층 7장',
+    flowTitle: '일곱 장이 드러내는 전체 구조',
+    rule: `선택한 상담 분야에 맞춰 일곱 위치의 역할을 구분해 읽어주세요. 카드별 설명을 나열하지 말고, 현재 상태와 숨은 변수, 외부 조건, 장애물, 행동, 결과가 어떻게 맞물리는지 하나의 상담 흐름으로 연결하세요.`,
+    positions: []
+  },
+  celtic: {
+    label: '켈틱 크로스 10장',
+    flowTitle: '상황의 안과 밖을 연결한 종합 흐름',
+    rule: `켈틱 크로스의 열 위치를 각각 독립된 점괘처럼 나열하지 마세요. 현재와 도전의 충돌, 의식적 목표와 무의식적 기반의 차이, 과거에서 가까운 미래로 이어지는 흐름, 질문자 자신과 외부 환경의 상호작용, 희망·두려움이 최종 결과에 미치는 영향을 묶어 종합적으로 읽어주세요.`,
+    positions: [
+      { key: 'present', label: '현재 핵심', description: '질문의 중심에 놓인 현재 상태' },
+      { key: 'challenge', label: '가로막는 힘', description: '현재를 교차하며 돕거나 방해하는 힘' },
+      { key: 'conscious', label: '의식적 목표', description: '질문자가 바라고 추구하는 방향' },
+      { key: 'foundation', label: '무의식적 기반', description: '상황의 뿌리와 숨은 동기' },
+      { key: 'past', label: '지나온 영향', description: '현재까지 이어진 과거의 영향' },
+      { key: 'near_future', label: '가까운 미래', description: '곧 드러날 다음 변화' },
+      { key: 'self', label: '질문자의 태도', description: '스스로 취하고 있는 입장과 역할' },
+      { key: 'environment', label: '외부 환경', description: '상대·조직·주변 조건의 영향' },
+      { key: 'hopes_fears', label: '희망과 두려움', description: '기대와 불안이 판단에 미치는 영향' },
+      { key: 'outcome', label: '최종 흐름', description: '현재 구조가 유지될 때의 종합 가능성' }
+    ]
+  }
+};
+
+const CATEGORY_DEEP_POSITIONS = {
+  love: [
+    { key: 'self', label: '나의 마음', description: '내가 이 관계에서 원하는 것' },
+    { key: 'other', label: '상대의 태도', description: '상대에게서 읽히는 감정과 태도의 가능성' },
+    { key: 'connection', label: '두 사람의 연결', description: '현재 관계를 묶고 있는 힘' },
+    { key: 'hidden', label: '숨은 감정', description: '표면 아래 감춰진 감정과 방어' },
+    { key: 'obstacle', label: '관계의 장애물', description: '진전을 막는 현실적·감정적 요인' },
+    { key: 'advice', label: '필요한 행동', description: '관계를 위해 취해야 할 행동과 경계' },
+    { key: 'outcome', label: '관계의 흐름', description: '현재 흐름이 이어질 때의 가능성' }
+  ],
+  career: [
+    { key: 'current', label: '현재 위치', description: '취업·직장 상황의 현재 단계' },
+    { key: 'strength', label: '드러난 강점', description: '외부에서 알아보기 쉬운 경쟁력' },
+    { key: 'weakness', label: '숨은 약점', description: '스스로 놓치기 쉬운 보완점' },
+    { key: 'opportunity', label: '외부 기회', description: '회사·시장·주변에서 열리는 가능성' },
+    { key: 'obstacle', label: '외부 장애물', description: '경쟁·지연·조건 등 통제하기 어려운 요소' },
+    { key: 'action', label: '필요한 행동', description: '다음 단계에서 우선해야 할 실행' },
+    { key: 'outcome', label: '예상 결과', description: '현재 전략이 이어질 때의 가능성' }
+  ],
+  money: [
+    { key: 'current', label: '현재 금전 흐름', description: '수입과 지출의 현재 균형' },
+    { key: 'income', label: '들어올 기회', description: '수입·회수·기회가 생기는 경로' },
+    { key: 'expense', label: '빠져나갈 위험', description: '지출·손실·누수 가능성' },
+    { key: 'hidden', label: '숨은 변수', description: '계약·타이밍·감정 소비 등 놓친 요소' },
+    { key: 'avoid', label: '피해야 할 선택', description: '손실을 키울 수 있는 행동' },
+    { key: 'action', label: '필요한 행동', description: '현금 흐름을 개선할 현실적 실행' },
+    { key: 'outcome', label: '예상 흐름', description: '현재 선택이 이어질 때의 금전 방향' }
+  ],
+  relationship: [
+    { key: 'self', label: '나의 입장', description: '이 관계에서 내가 취하는 태도' },
+    { key: 'other', label: '상대의 입장', description: '상대에게서 읽히는 태도의 가능성' },
+    { key: 'dynamic', label: '관계의 힘', description: '둘 사이의 균형과 반복 패턴' },
+    { key: 'hidden', label: '숨은 긴장', description: '말하지 않았지만 쌓인 문제' },
+    { key: 'boundary', label: '필요한 경계', description: '지켜야 할 선과 기준' },
+    { key: 'action', label: '필요한 행동', description: '소통·거리 조절·결정의 방향' },
+    { key: 'outcome', label: '관계의 흐름', description: '현재 패턴이 이어질 때의 가능성' }
+  ],
+  decision: [
+    { key: 'current', label: '현재 판단 상태', description: '지금 결정을 바라보는 태도와 조건' },
+    { key: 'criterion', label: '핵심 선택 기준', description: '결정에서 가장 중요하게 봐야 할 기준' },
+    { key: 'gain', label: '선택으로 얻는 것', description: '결정을 내렸을 때 기대할 수 있는 이점' },
+    { key: 'cost', label: '감수해야 할 것', description: '결정에 따르는 비용·위험·포기할 요소' },
+    { key: 'hidden', label: '놓친 변수', description: '아직 충분히 고려하지 못한 조건' },
+    { key: 'action', label: '결정 방식', description: '후회를 줄이기 위해 취해야 할 판단과 행동' },
+    { key: 'outcome', label: '선택 이후 흐름', description: '현재 기준으로 결정했을 때 이어질 가능성' }
+  ],
+  other: [
+    { key: 'current', label: '현재 상황', description: '질문에서 지금 가장 강하게 작용하는 상태' },
+    { key: 'factor', label: '핵심 변수', description: '결과를 가장 크게 좌우하는 요소' },
+    { key: 'advantage', label: '유리한 요소', description: '원하는 방향에 도움이 되는 조건' },
+    { key: 'risk', label: '불리한 요소', description: '실패·손실·후회를 키울 수 있는 조건' },
+    { key: 'hidden', label: '숨은 조건', description: '겉으로 드러나지 않았거나 놓친 변수' },
+    { key: 'action', label: '필요한 행동', description: '지금 취할 수 있는 가장 현실적인 대응' },
+    { key: 'outcome', label: '예상 흐름', description: '현재 상태와 행동이 이어질 때의 가능성' }
+  ]
+};
+
+const FOLLOWUP_SPREADS = {
+  clarify1: {
+    label: '한 장 보충',
+    rule: `추가 질문에 대한 핵심 답을 한 장에서 읽으세요. 기본 리딩의 카드를 반복 설명하지 말고, 이 카드가 기존 해석을 강화하는지, 수정하는지, 새로운 조건을 붙이는지 분명히 밝혀주세요.`,
+    positions: [{ key: 'answer', label: '추가 질문의 핵심 답', description: '꼬리 질문에 대한 가장 중요한 메시지' }]
+  },
+  tail3: {
+    label: '세 장 꼬리 리딩',
+    rule: `추가 질문의 핵심 단서, 아직 드러나지 않은 변수, 그 변수가 반영된 다음 흐름을 연결하세요. 세 카드를 기본 배열의 과거·현재·미래로 멋대로 바꾸지 마세요.`,
+    positions: [
+      { key: 'clue', label: '핵심 단서', description: '추가 질문에서 가장 먼저 봐야 할 것' },
+      { key: 'hidden', label: '숨은 변수', description: '아직 보이지 않거나 놓친 조건' },
+      { key: 'next', label: '다음 흐름', description: '이 변수를 고려할 때 이어질 가능성' }
+    ]
+  },
+  deep5: {
+    label: '다섯 장 깊이 보기',
+    rule: `추가 질문만을 위한 다섯 장 배열입니다. 현재 상태, 원인, 장애물, 행동, 예상 방향을 연결하고, 기본 리딩과 무엇이 같고 무엇이 달라졌는지 정리하세요.`,
+    positions: [
+      { key: 'current', label: '현재 상태', description: '추가 질문의 현재 핵심' },
+      { key: 'cause', label: '원인', description: '그 상태를 만든 배경' },
+      { key: 'obstacle', label: '장애물', description: '답을 흐리거나 진행을 막는 요인' },
+      { key: 'action', label: '필요한 행동', description: '질문자가 취할 수 있는 구체적 행동' },
+      { key: 'outcome', label: '예상 방향', description: '행동 이후 이어질 가능성' }
+    ]
+  }
+};
+
+function getSpreadDefinition(key = state.spread, category = state.category) {
+  const base = SPREAD_LIBRARY[key] || SPREAD_LIBRARY.one;
+  if (key !== 'deep') return base;
+  return { ...base, positions: CATEGORY_DEEP_POSITIONS[category] || CATEGORY_DEEP_POSITIONS.other };
+}
+
+function getFollowUpDefinition(key) {
+  return FOLLOWUP_SPREADS[key] || FOLLOWUP_SPREADS.clarify1;
+}
+
+const MAJOR = [
+  { number: 0, name: "광대", en: "The Fool", symbol: "✧", palette: ["#27335d", "#c8a86f"] },
+  { number: 1, name: "마법사", en: "The Magician", symbol: "∞", palette: ["#4a245c", "#f0c46b"] },
+  { number: 2, name: "여사제", en: "The High Priestess", symbol: "☾", palette: ["#17284f", "#9ab6e8"] },
+  { number: 3, name: "여황제", en: "The Empress", symbol: "♀", palette: ["#5c2d4f", "#d7a98d"] },
+  { number: 4, name: "황제", en: "The Emperor", symbol: "♔", palette: ["#4d2424", "#d08b5b"] },
+  { number: 5, name: "교황", en: "The Hierophant", symbol: "✣", palette: ["#3c3158", "#d6c49a"] },
+  { number: 6, name: "연인", en: "The Lovers", symbol: "♡", palette: ["#612d54", "#efb1ae"] },
+  { number: 7, name: "전차", en: "The Chariot", symbol: "➶", palette: ["#1f3d5a", "#d7d0aa"] },
+  { number: 8, name: "힘", en: "Strength", symbol: "♌", palette: ["#573334", "#e8bd73"] },
+  { number: 9, name: "은둔자", en: "The Hermit", symbol: "✦", palette: ["#26323f", "#d7c998"] },
+  { number: 10, name: "운명의 수레바퀴", en: "Wheel of Fortune", symbol: "☸", palette: ["#3a2a5a", "#d7af6c"] },
+  { number: 11, name: "정의", en: "Justice", symbol: "⚖", palette: ["#233c4b", "#c9b99a"] },
+  { number: 12, name: "매달린 사람", en: "The Hanged Man", symbol: "⌛", palette: ["#244b52", "#afc9b9"] },
+  { number: 13, name: "죽음", en: "Death", symbol: "✢", palette: ["#1a2028", "#c8c1ad"] },
+  { number: 14, name: "절제", en: "Temperance", symbol: "⚗", palette: ["#31536a", "#e2b883"] },
+  { number: 15, name: "악마", en: "The Devil", symbol: "♄", palette: ["#3a1722", "#c65c64"] },
+  { number: 16, name: "탑", en: "The Tower", symbol: "ϟ", palette: ["#20243f", "#e07a57"] },
+  { number: 17, name: "별", en: "The Star", symbol: "★", palette: ["#243f68", "#b9d8ef"] },
+  { number: 18, name: "달", en: "The Moon", symbol: "☽", palette: ["#17264c", "#a7a9d6"] },
+  { number: 19, name: "태양", en: "The Sun", symbol: "☀", palette: ["#6a3b1f", "#f4c767"] },
+  { number: 20, name: "심판", en: "Judgement", symbol: "✺", palette: ["#493454", "#d3bd9d"] },
+  { number: 21, name: "세계", en: "The World", symbol: "◎", palette: ["#284d4d", "#d7c58c"] }
+];
+
+const SUITS = {
+  wands: { ko: "완드", en: "Wands", symbol: "♣", palette: ["#502f27", "#d69763"] },
+  cups: { ko: "컵", en: "Cups", symbol: "♥", palette: ["#183d5b", "#83b8d7"] },
+  swords: { ko: "소드", en: "Swords", symbol: "♠", palette: ["#293244", "#b7c4d2"] },
+  pentacles: { ko: "펜타클", en: "Pentacles", symbol: "◆", palette: ["#30462f", "#c2ad6b"] }
+};
+
+const RANKS = [
+  { key: "ace", ko: "에이스", en: "Ace", mark: "A" },
+  { key: "two", ko: "2", en: "Two", mark: "II" },
+  { key: "three", ko: "3", en: "Three", mark: "III" },
+  { key: "four", ko: "4", en: "Four", mark: "IV" },
+  { key: "five", ko: "5", en: "Five", mark: "V" },
+  { key: "six", ko: "6", en: "Six", mark: "VI" },
+  { key: "seven", ko: "7", en: "Seven", mark: "VII" },
+  { key: "eight", ko: "8", en: "Eight", mark: "VIII" },
+  { key: "nine", ko: "9", en: "Nine", mark: "IX" },
+  { key: "ten", ko: "10", en: "Ten", mark: "X" },
+  { key: "page", ko: "페이지", en: "Page", mark: "P" },
+  { key: "knight", ko: "나이트", en: "Knight", mark: "N" },
+  { key: "queen", ko: "퀸", en: "Queen", mark: "Q" },
+  { key: "king", ko: "킹", en: "King", mark: "K" }
+];
+
+function buildDeck() {
+  const majors = MAJOR.map(card => ({
+    id: `major-${String(card.number).padStart(2, '0')}`,
+    type: 'major',
+    number: card.number,
+    name: card.name,
+    en: card.en,
+    symbol: card.symbol,
+    palette: card.palette
+  }));
+
+  const minors = [];
+  Object.keys(SUITS).forEach(suitKey => {
+    RANKS.forEach((rank, index) => {
+      const suit = SUITS[suitKey];
+      minors.push({
+        id: `${suitKey}-${rank.key}`,
+        type: 'minor',
+        suit: suitKey,
+        rank: rank.key,
+        pipCount: Math.min(index + 1, 10),
+        number: index + 1,
+        name: `${suit.ko} ${rank.ko}`,
+        en: `${rank.en} of ${suit.en}`,
+        symbol: suit.symbol,
+        rankMark: rank.mark,
+        palette: suit.palette
+      });
+    });
+  });
+
+  return [...majors, ...minors];
+}
+
+const DECK = buildDeck();
+
+const state = {
+  question: '', category: 'love', spread: 'one', tone: 'direct',
+  shuffled: [], selected: [], followUps: [], pendingFollowUp: null, drawContext: 'base', savedId: null, isSelecting: false,
+  pendingSelectionIds: [], wheelIndex: 0, suppressClickUntil: 0
+};
+
+const el = {
+  home: document.querySelector('#homeView'), draw: document.querySelector('#drawView'), result: document.querySelector('#resultView'),
+  form: document.querySelector('#readingForm'), question: document.querySelector('#question'), questionCount: document.querySelector('#questionCount'),
+  tone: document.querySelector('#tone'), deckViewport: document.querySelector('#deckViewport'), deckStage: document.querySelector('#deckStage'), drawEyebrow: document.querySelector('#drawEyebrow'), drawQuestion: document.querySelector('#drawQuestion'), drawTitle: document.querySelector('#drawTitle'), drawProgress: document.querySelector('#drawProgress'), drawHint: document.querySelector('#drawHint'), cancelDraw: document.querySelector('#cancelDrawButton'),
+  deckPrev: document.querySelector('#deckPrev'), deckNext: document.querySelector('#deckNext'), deckPageInfo: document.querySelector('#deckPageInfo'), deckPageBar: document.querySelector('#deckPageBar'), confirmSelection: document.querySelector('#confirmCardSelection'), confirmCardCount: document.querySelector('#confirmCardCount'),
+  selectedCards: document.querySelector('#selectedCards'), followUpResults: document.querySelector('#followUpResults'), followUpQuestion: document.querySelector('#followUpQuestion'), followUpSuggestions: document.querySelector('#followUpSuggestions'), followUpLimitNote: document.querySelector('#followUpLimitNote'), resultQuestion: document.querySelector('#resultQuestion'), resultMeta: document.querySelector('#resultMeta'),
+  historyDialog: document.querySelector('#historyDialog'), historyList: document.querySelector('#historyList'), historyTemplate: document.querySelector('#historyItemTemplate'),
+  copyDialog: document.querySelector('#copyDialog'), copyPromptBox: document.querySelector('#copyPromptBox'),
+  imageDialog: document.querySelector('#imageDialog'), resultImagePreview: document.querySelector('#resultImagePreview'), resultImageDownloadLink: document.querySelector('#resultImageDownloadLink'), imageSaveNote: document.querySelector('#imageSaveNote'), openImageButton: document.querySelector('[data-open-image]')
+};
+
+let activeResultImageUrl = '';
+let activeResultImageDataUrl = '';
+let activeResultFilename = '';
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+}
+
+function shuffle(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function svgToDataUrl(svg) {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function cardBackSvg() {
+  return svgToDataUrl(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 525">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#241938"/><stop offset="1" stop-color="#0d1429"/></linearGradient>
+        <pattern id="p" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <path d="M17 2 L32 17 L17 32 L2 17 Z" fill="none" stroke="#b99a63" stroke-opacity=".24" stroke-width="1"/>
+          <circle cx="17" cy="17" r="2.2" fill="#d8bc83" fill-opacity=".42"/>
+        </pattern>
+        <radialGradient id="r"><stop stop-color="#8c72be" stop-opacity=".5"/><stop offset="1" stop-color="#8c72be" stop-opacity="0"/></radialGradient>
+      </defs>
+      <rect width="300" height="525" rx="22" fill="url(#g)"/>
+      <rect x="12" y="12" width="276" height="501" rx="16" fill="url(#p)" stroke="#c7a66e" stroke-opacity=".62" stroke-width="2"/>
+      <circle cx="150" cy="262.5" r="94" fill="url(#r)"/>
+      <circle cx="150" cy="262.5" r="68" fill="none" stroke="#d4b77d" stroke-width="2" stroke-opacity=".76"/>
+      <circle cx="150" cy="262.5" r="45" fill="none" stroke="#d4b77d" stroke-width="1" stroke-opacity=".46" stroke-dasharray="3 7"/>
+      <path d="M150 183 L164 244 L225 262.5 L164 281 L150 342 L136 281 L75 262.5 L136 244 Z" fill="#d8bc83" fill-opacity=".88"/>
+      <circle cx="150" cy="262.5" r="13" fill="#151126" stroke="#f0d9a6" stroke-width="2"/>
+      <text x="150" y="452" text-anchor="middle" fill="#d8bc83" font-family="serif" font-size="14" letter-spacing="4">ASK THE CARDS</text>
+    </svg>`);
+}
+
+const CARD_BACK = cardBackSvg();
+
+function pipPositions(count) {
+  const positions = [
+    [150, 260], [95, 170], [205, 350], [205, 170], [95, 350],
+    [95, 260], [205, 260], [150, 120], [150, 400], [150, 330]
+  ];
+  return positions.slice(0, Math.max(1, Math.min(count, positions.length)));
+}
+
+function getMajorSymbolMarkup(card, light) {
+  if (card.en === 'Strength') {
+    return `
+      <g transform="translate(150 252)">
+        <ellipse cx="0" cy="6" rx="68" ry="55" fill="#ffffff" fill-opacity=".05" stroke="${light}" stroke-opacity=".12"/>
+        <circle cx="0" cy="-20" r="54" fill="#ffffff" fill-opacity=".04" stroke="${light}" stroke-opacity=".28"/>
+        <circle cx="-28" cy="-42" r="14" fill="none" stroke="${light}" stroke-width="5" stroke-opacity=".95"/>
+        <circle cx="28" cy="-42" r="14" fill="none" stroke="${light}" stroke-width="5" stroke-opacity=".95"/>
+        <circle cx="-34" cy="-68" r="11" fill="none" stroke="${light}" stroke-width="4" stroke-opacity=".88"/>
+        <circle cx="34" cy="-68" r="11" fill="none" stroke="${light}" stroke-width="4" stroke-opacity=".88"/>
+        <circle cx="0" cy="-10" r="12" fill="none" stroke="${light}" stroke-width="4" stroke-opacity=".88"/>
+        <path d="M-18 8 Q0 22 18 8" fill="none" stroke="${light}" stroke-width="4" stroke-linecap="round" stroke-opacity=".85"/>
+        <path d="M-50 -8 Q-66 4 -72 22" fill="none" stroke="${light}" stroke-width="4" stroke-linecap="round" stroke-opacity=".8"/>
+        <path d="M50 -8 Q66 4 72 22" fill="none" stroke="${light}" stroke-width="4" stroke-linecap="round" stroke-opacity=".8"/>
+      </g>`;
+  }
+  if (card.en === 'Wheel of Fortune') {
+    return `
+      <g transform="translate(150 246)">
+        <circle r="78" fill="#ffffff" fill-opacity=".04" stroke="${light}" stroke-width="4" stroke-opacity=".9"/>
+        <circle r="55" fill="none" stroke="${light}" stroke-width="3" stroke-opacity=".6" stroke-dasharray="6 8"/>
+        <circle r="22" fill="none" stroke="${light}" stroke-width="3.5" stroke-opacity=".92"/>
+        <circle r="6" fill="${light}" fill-opacity=".95"/>
+        <line x1="0" y1="-55" x2="0" y2="55" stroke="${light}" stroke-width="3.5" stroke-linecap="round" stroke-opacity=".92"/>
+        <line x1="-55" y1="0" x2="55" y2="0" stroke="${light}" stroke-width="3.5" stroke-linecap="round" stroke-opacity=".92"/>
+        <line x1="-39" y1="-39" x2="39" y2="39" stroke="${light}" stroke-width="3" stroke-linecap="round" stroke-opacity=".8"/>
+        <line x1="39" y1="-39" x2="-39" y2="39" stroke="${light}" stroke-width="3" stroke-linecap="round" stroke-opacity=".8"/>
+        <g fill="${light}" fill-opacity=".9">
+          <circle cx="0" cy="-78" r="6"/>
+          <circle cx="78" cy="0" r="6"/>
+          <circle cx="0" cy="78" r="6"/>
+          <circle cx="-78" cy="0" r="6"/>
+        </g>
+      </g>`;
+  }
+  if (card.en === 'The Hanged Man') {
+    return `
+      <g transform="translate(150 248)">
+        <path d="M-34 -64 H34" fill="none" stroke="${light}" stroke-width="7" stroke-linecap="round" stroke-opacity=".92"/>
+        <path d="M0 -64 V-36" fill="none" stroke="${light}" stroke-width="5" stroke-linecap="round" stroke-opacity=".92"/>
+        <circle cx="0" cy="-16" r="16" fill="none" stroke="${light}" stroke-width="4.5" stroke-opacity=".92"/>
+        <path d="M0 0 V44" fill="none" stroke="${light}" stroke-width="5" stroke-linecap="round" stroke-opacity=".92"/>
+        <path d="M0 18 L-24 44" fill="none" stroke="${light}" stroke-width="5" stroke-linecap="round" stroke-opacity=".88"/>
+        <path d="M0 18 L24 44" fill="none" stroke="${light}" stroke-width="5" stroke-linecap="round" stroke-opacity=".88"/>
+        <path d="M0 44 L-18 74" fill="none" stroke="${light}" stroke-width="5" stroke-linecap="round" stroke-opacity=".88"/>
+        <path d="M0 44 L18 74" fill="none" stroke="${light}" stroke-width="5" stroke-linecap="round" stroke-opacity=".88"/>
+        <circle cx="0" cy="-16" r="46" fill="none" stroke="${light}" stroke-opacity=".18"/>
+      </g>`;
+  }
+  if (card.en === 'Justice') {
+    return `
+      <g transform="translate(150 248)" stroke="${light}" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="0" y1="-68" x2="0" y2="58" stroke-width="5" stroke-opacity=".92"/>
+        <line x1="-58" y1="-42" x2="58" y2="-42" stroke-width="5" stroke-opacity=".92"/>
+        <line x1="-34" y1="-42" x2="-54" y2="-2" stroke-width="3.5" stroke-opacity=".82"/>
+        <line x1="34" y1="-42" x2="54" y2="-2" stroke-width="3.5" stroke-opacity=".82"/>
+        <path d="M-72 -2 Q-54 20 -36 -2" stroke-width="4" stroke-opacity=".9"/>
+        <path d="M36 -2 Q54 20 72 -2" stroke-width="4" stroke-opacity=".9"/>
+        <path d="M-16 58 H16" stroke-width="5" stroke-opacity=".92"/>
+      </g>`;
+  }
+  if (card.en === 'Temperance') {
+    return `
+      <g transform="translate(150 248)" stroke="${light}" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M-42 -16 C-42 -52 -10 -70 0 -86 C10 -70 42 -52 42 -16 C42 26 12 62 0 82 C-12 62 -42 26 -42 -16 Z" stroke-width="4.5" stroke-opacity=".9"/>
+        <path d="M-18 -12 C-10 2 10 2 18 -12" stroke-width="3.5" stroke-opacity=".85"/>
+        <path d="M-10 8 Q0 18 10 8" stroke-width="3.5" stroke-opacity=".85"/>
+        <circle cx="0" cy="-22" r="8" stroke-width="3.5" stroke-opacity=".88"/>
+      </g>`;
+  }
+  if (card.en === 'The Sun') {
+    return `
+      <g transform="translate(150 248)" stroke="${light}" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="0" cy="0" r="34" stroke-width="4.5" stroke-opacity=".92"/>
+        <g stroke-width="4" stroke-opacity=".9">
+          <line x1="0" y1="-72" x2="0" y2="-52"/>
+          <line x1="0" y1="72" x2="0" y2="52"/>
+          <line x1="-72" y1="0" x2="-52" y2="0"/>
+          <line x1="72" y1="0" x2="52" y2="0"/>
+          <line x1="-50" y1="-50" x2="-36" y2="-36"/>
+          <line x1="50" y1="-50" x2="36" y2="-36"/>
+          <line x1="-50" y1="50" x2="-36" y2="36"/>
+          <line x1="50" y1="50" x2="36" y2="36"/>
+        </g>
+      </g>`;
+  }
+  return `<text x="150" y="280" text-anchor="middle" fill="${light}" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Arial Unicode MS',Georgia,serif" font-size="98">${escapeHtml(card.symbol)}</text>`;
+}
+
+function getMajorDisplaySymbol(card) {
+  const map = {
+    'Strength': '∞',
+    'Wheel of Fortune': '✦',
+    'The Hanged Man': '⊥',
+    'Justice': '∣',
+    'Temperance': '◌',
+    'The Sun': '✶'
+  };
+  return map[card.en] || card.symbol;
+}
+
+function cardFrontSvg(card) {
+  const [deep, light] = card.palette;
+  const title = escapeHtml(card.en.toUpperCase());
+  const ko = escapeHtml(card.name);
+  const displaySymbol = getMajorDisplaySymbol(card);
+  let central = '';
+
+  if (card.type === 'major') {
+    central = `
+      <circle cx="150" cy="245" r="102" fill="#ffffff" fill-opacity=".045" stroke="${light}" stroke-opacity=".35"/>
+      <circle cx="150" cy="245" r="78" fill="none" stroke="${light}" stroke-opacity=".3" stroke-dasharray="3 7"/>
+      ${getMajorSymbolMarkup(card, light)}
+      <path d="M55 366 Q150 316 245 366" fill="none" stroke="${light}" stroke-opacity=".38"/>
+      <path d="M72 385 Q150 343 228 385" fill="none" stroke="${light}" stroke-opacity=".2"/>
+    `;
+  } else if (['page', 'knight', 'queen', 'king'].includes(card.rank)) {
+    central = `
+      <circle cx="150" cy="243" r="96" fill="#ffffff" fill-opacity=".045" stroke="${light}" stroke-opacity=".35"/>
+      <text x="150" y="274" text-anchor="middle" fill="${light}" font-family="Georgia,serif" font-size="104">${escapeHtml(card.rankMark)}</text>
+      <text x="150" y="332" text-anchor="middle" fill="${light}" font-family="Georgia,serif" font-size="32">${escapeHtml(card.symbol)}</text>
+    `;
+  } else {
+    central = pipPositions(card.pipCount).map(([x, y], index) => `
+      <g transform="translate(${x} ${y}) rotate(${index % 2 ? 8 : -8})">
+        <circle r="24" fill="#ffffff" fill-opacity=".05" stroke="${light}" stroke-opacity=".28"/>
+        <text y="12" text-anchor="middle" fill="${light}" font-family="Georgia,serif" font-size="34">${escapeHtml(card.symbol)}</text>
+      </g>`).join('');
+  }
+
+  return svgToDataUrl(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 525">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${deep}"/><stop offset="1" stop-color="#0d0b16"/></linearGradient>
+        <radialGradient id="glow"><stop stop-color="${light}" stop-opacity=".28"/><stop offset="1" stop-color="${light}" stop-opacity="0"/></radialGradient>
+        <pattern id="stars" width="48" height="48" patternUnits="userSpaceOnUse"><circle cx="8" cy="9" r="1" fill="#fff" fill-opacity=".32"/><circle cx="38" cy="32" r=".7" fill="#fff" fill-opacity=".22"/></pattern>
+      </defs>
+      <rect width="300" height="525" rx="22" fill="url(#bg)"/>
+      <rect width="300" height="525" rx="22" fill="url(#stars)"/>
+      <circle cx="150" cy="240" r="150" fill="url(#glow)"/>
+      <rect x="11" y="11" width="278" height="503" rx="16" fill="none" stroke="${light}" stroke-opacity=".72" stroke-width="2"/>
+      <rect x="19" y="19" width="262" height="487" rx="12" fill="none" stroke="#fff" stroke-opacity=".1"/>
+      <text x="28" y="48" fill="${light}" font-family="Georgia,serif" font-size="19">${card.type === 'major' ? String(card.number).padStart(2, '0') : escapeHtml(card.rankMark)}</text>
+      <text x="272" y="48" text-anchor="end" fill="${light}" font-family="Georgia,serif" font-size="22">${escapeHtml(displaySymbol)}</text>
+      ${central}
+      <line x1="65" y1="424" x2="235" y2="424" stroke="${light}" stroke-opacity=".34"/>
+      <text x="150" y="458" text-anchor="middle" fill="#fff" font-family="Georgia,serif" font-size="13" letter-spacing="2.2">${title}</text>
+      <text x="150" y="486" text-anchor="middle" fill="${light}" font-family="sans-serif" font-size="15" font-weight="700">${ko}</text>
+    </svg>`);
+}
+
+DECK.forEach(card => { card.image = cardFrontSvg(card); });
+
+function showView(name) {
+  [el.home, el.draw, el.result].forEach(view => view.classList.remove('is-active'));
+  ({ home: el.home, draw: el.draw, result: el.result })[name].classList.add('is-active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function beginReading(event) {
+  event.preventDefault();
+  const question = el.question.value.trim();
+  if (question.length < 4) {
+    toast('질문을 조금 더 구체적으로 적어주세요.');
+    el.question.focus();
+    return;
+  }
+  const data = new FormData(el.form);
+  state.question = question;
+  state.category = data.get('category');
+  state.spread = data.get('spread');
+  state.tone = data.get('tone');
+  state.shuffled = shuffle(DECK);
+  state.selected = [];
+  state.followUps = [];
+  state.pendingFollowUp = null;
+  state.drawContext = 'base';
+  state.pendingSelectionIds = [];
+  state.savedId = null;
+  state.isSelecting = false;
+  state.pendingSelectionIds = [];
+  state.wheelIndex = Math.floor(state.shuffled.length / 2);
+  prepareDrawHeader();
+  renderDeck();
+  showView('draw');
+}
+
+function currentDrawSession() {
+  if (state.drawContext === 'followup' && state.pendingFollowUp) {
+    const definition = getFollowUpDefinition(state.pendingFollowUp.spread);
+    return {
+      kind: 'followup',
+      question: state.pendingFollowUp.question,
+      positions: definition.positions,
+      cards: state.pendingFollowUp.cards,
+      label: definition.label
+    };
+  }
+  const definition = getSpreadDefinition();
+  return {
+    kind: 'base',
+    question: state.question,
+    positions: definition.positions,
+    cards: state.selected,
+    label: definition.label
+  };
+}
+
+function prepareDrawHeader() {
+  const session = currentDrawSession();
+  const isFollowUp = session.kind === 'followup';
+  el.drawEyebrow.textContent = isFollowUp ? '추가 질문' : '질문 내용';
+  el.drawQuestion.textContent = session.question;
+  el.drawTitle.textContent = isFollowUp
+    ? '추가 질문을 생각하며 마음이 가는 카드를 고르세요.'
+    : '질문을 생각하며 마음이 가는 카드를 고르세요.';
+  el.cancelDraw.textContent = isFollowUp ? '추가 질문 취소' : '질문 다시 쓰기';
+}
+
+let wheelFrame = 0;
+let wheelSettleTimer = 0;
+let lastWheelIndex = -1;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function wheelButtons() {
+  return [...el.deckStage.querySelectorAll('.pick-card')];
+}
+
+function centerWheelOnIndex(index, behavior = 'smooth') {
+  const buttons = wheelButtons();
+  if (!buttons.length) return;
+  const safeIndex = clamp(index, 0, buttons.length - 1);
+  const button = buttons[safeIndex];
+  const target = button.offsetLeft + button.offsetWidth / 2 - el.deckViewport.clientWidth / 2;
+  el.deckViewport.scrollTo({ left: Math.max(0, target), behavior });
+}
+
+function updateWheelProgress(index = state.wheelIndex) {
+  const total = state.shuffled.length;
+  if (!total) {
+    el.deckPageInfo.textContent = '남은 카드 없음';
+    el.deckPageBar.style.width = '0%';
+    el.deckPrev.disabled = true;
+    el.deckNext.disabled = true;
+    return;
+  }
+  state.wheelIndex = clamp(index, 0, total - 1);
+  el.deckPageInfo.textContent = `${state.wheelIndex + 1} / ${total}`;
+  el.deckPageBar.style.width = `${((state.wheelIndex + 1) / total) * 100}%`;
+  el.deckPrev.disabled = state.wheelIndex <= 0 || state.isSelecting;
+  el.deckNext.disabled = state.wheelIndex >= total - 1 || state.isSelecting;
+}
+
+function updateWheelVisuals() {
+  wheelFrame = 0;
+  const buttons = wheelButtons();
+  if (!buttons.length) return;
+  const viewportCenter = el.deckViewport.scrollLeft + el.deckViewport.clientWidth / 2;
+  const cardStep = Math.max(1, buttons[0].offsetWidth + 12);
+  let nearestIndex = 0;
+  let nearestDistance = Infinity;
+
+  const measurements = buttons.map((button, index) => {
+    const center = button.offsetLeft + button.offsetWidth / 2;
+    const rawDistance = (center - viewportCenter) / cardStep;
+    const distance = clamp(rawDistance, -4.5, 4.5);
+    const absolute = Math.abs(distance);
+    if (absolute < nearestDistance) {
+      nearestDistance = absolute;
+      nearestIndex = index;
+    }
+    return { button, index, distance, absolute };
+  });
+
+  measurements.forEach(({ button, index, distance, absolute }) => {
+    const scale = Math.max(.72, 1.08 - absolute * .085);
+    const y = Math.min(58, Math.pow(absolute, 1.35) * 12);
+    const rotation = clamp(distance * -4.4, -17, 17);
+    const opacity = Math.max(.35, 1 - absolute * .15);
+    button.style.setProperty('--wheel-scale', scale.toFixed(3));
+    button.style.setProperty('--wheel-y', `${y.toFixed(1)}px`);
+    button.style.setProperty('--wheel-rotate', `${rotation.toFixed(2)}deg`);
+    button.style.setProperty('--wheel-opacity', opacity.toFixed(3));
+    button.style.zIndex = String(100 - Math.round(absolute * 10));
+    button.classList.toggle('is-centered', index === nearestIndex);
+  });
+
+  if (nearestIndex !== lastWheelIndex) {
+    lastWheelIndex = nearestIndex;
+    updateWheelProgress(nearestIndex);
+  }
+}
+
+function scheduleWheelVisuals() {
+  if (wheelFrame) return;
+  wheelFrame = requestAnimationFrame(updateWheelVisuals);
+}
+
+function moveWheel(delta) {
+  if (state.isSelecting || !state.shuffled.length) return;
+  centerWheelOnIndex(clamp(state.wheelIndex + delta, 0, state.shuffled.length - 1));
+}
+
+function updatePendingSelectionUI() {
+  const session = currentDrawSession();
+  const needed = session.positions.length;
+  const chosenCount = state.pendingSelectionIds.length;
+  const remaining = Math.max(0, needed - chosenCount);
+
+  el.drawProgress.textContent = `CARD ${chosenCount} / ${needed} · DECK ${state.shuffled.length}`;
+  el.drawHint.textContent = chosenCount === 0
+    ? `${needed}장을 선택하세요.`
+    : remaining > 0
+      ? `${remaining}장을 더 선택하세요. 선택한 카드는 다시 누르면 취소됩니다.`
+      : '선택한 카드를 확인한 뒤 ‘선택 완료’를 눌러주세요.';
+
+  el.confirmCardCount.textContent = `${chosenCount} / ${needed}`;
+  el.confirmSelection.disabled = chosenCount !== needed || state.isSelecting;
+
+  wheelButtons().forEach(button => {
+    const order = state.pendingSelectionIds.indexOf(button.dataset.cardId);
+    const chosen = order >= 0;
+    button.classList.toggle('is-chosen', chosen);
+    button.dataset.choiceOrder = '';
+    button.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+    button.setAttribute('aria-label', chosen
+      ? '선택한 카드. 다시 누르면 선택 취소'
+      : '타로 카드 선택');
+  });
+}
+
+function renderDeck() {
+  const visible = state.shuffled.length;
+  state.wheelIndex = clamp(state.wheelIndex, 0, Math.max(0, visible - 1));
+
+  el.deckStage.classList.remove('is-picking', 'is-confirming');
+  el.deckStage.innerHTML = '';
+
+  state.shuffled.forEach((card, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'pick-card';
+    button.dataset.cardId = card.id;
+    button.dataset.choiceOrder = '';
+    button.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-label', '타로 카드 선택');
+    button.innerHTML = `<img src="${CARD_BACK}" alt="뒤집힌 타로 카드" draggable="false" />`;
+    button.addEventListener('click', () => selectCard(button.dataset.cardId, button));
+    el.deckStage.appendChild(button);
+  });
+
+  updatePendingSelectionUI();
+  updateWheelProgress(state.wheelIndex);
+  requestAnimationFrame(() => {
+    const firstButton = el.deckStage.querySelector('.pick-card');
+    const sidePadding = firstButton
+      ? Math.max(16, (el.deckViewport.clientWidth - firstButton.offsetWidth) / 2)
+      : 24;
+    el.deckStage.style.paddingLeft = `${sidePadding}px`;
+    el.deckStage.style.paddingRight = `${sidePadding}px`;
+    requestAnimationFrame(() => {
+      centerWheelOnIndex(state.wheelIndex, 'auto');
+      updateWheelVisuals();
+      updatePendingSelectionUI();
+    });
+  });
+}
+
+function selectCard(cardId, button) {
+  const session = currentDrawSession();
+  const needed = session.positions.length;
+  if (Date.now() < state.suppressClickUntil || state.isSelecting || !button) return;
+  if (!state.shuffled.some(card => card.id === cardId)) return;
+
+  const selectedIndex = state.pendingSelectionIds.indexOf(cardId);
+  if (selectedIndex >= 0) {
+    state.pendingSelectionIds.splice(selectedIndex, 1);
+    updatePendingSelectionUI();
+    toast('카드 선택을 취소했습니다.');
+    return;
+  }
+
+  if (state.pendingSelectionIds.length >= needed) {
+    toast(`${needed}장을 모두 골랐어요. 바꾸려면 선택한 카드를 다시 눌러 취소해주세요.`);
+    return;
+  }
+
+  state.pendingSelectionIds.push(cardId);
+  updatePendingSelectionUI();
+}
+
+function confirmCardSelection() {
+  const session = currentDrawSession();
+  const needed = session.positions.length;
+  if (state.isSelecting) return;
+  if (state.pendingSelectionIds.length !== needed) {
+    toast(`${needed}장을 모두 선택해주세요.`);
+    return;
+  }
+
+  state.isSelecting = true;
+  el.confirmSelection.disabled = true;
+  el.deckPrev.disabled = true;
+  el.deckNext.disabled = true;
+  el.deckStage.classList.add('is-confirming');
+
+  const chosenIds = [...state.pendingSelectionIds];
+  const chosenCards = chosenIds.map(id => state.shuffled.find(card => card.id === id)).filter(Boolean);
+  if (chosenCards.length !== needed) {
+    state.isSelecting = false;
+    toast('선택 상태를 확인할 수 없습니다. 다시 선택해주세요.');
+    renderDeck();
+    return;
+  }
+
+  window.setTimeout(() => {
+    const activeSession = currentDrawSession();
+    activeSession.cards.length = 0;
+    chosenCards.forEach((card, index) => {
+      activeSession.cards.push({
+        card,
+        direction: Math.random() < 0.34 ? 'reversed' : 'upright',
+        position: activeSession.positions[index]
+      });
+    });
+    const chosenSet = new Set(chosenIds);
+    state.shuffled = state.shuffled.filter(card => !chosenSet.has(card.id));
+    state.pendingSelectionIds = [];
+    state.wheelIndex = clamp(state.wheelIndex, 0, Math.max(0, state.shuffled.length - 1));
+    state.isSelecting = false;
+    completeCurrentDraw();
+  }, 390);
+}
+
+function completeCurrentDraw() {
+  if (state.drawContext === 'followup' && state.pendingFollowUp) {
+    state.followUps.push(state.pendingFollowUp);
+    state.pendingFollowUp = null;
+    state.drawContext = 'base';
+  }
+  revealResult();
+}
+
+function cardResultMarkup(item, index = 0) {
+  return `<article class="revealed-card" style="animation-delay:${index * 70}ms">
+    <div class="card-image-wrap"><img src="${item.card.image}" class="${item.direction === 'reversed' ? 'reversed' : ''}" alt="${escapeHtml(item.card.name)} ${item.direction === 'reversed' ? '역방향' : '정방향'}" /></div>
+    <p class="position">${escapeHtml(item.position.label)}</p>
+    <h3>${escapeHtml(item.card.name)}</h3>
+    <p class="direction">${item.direction === 'upright' ? '정방향' : '역방향'}</p>
+  </article>`;
+}
+
+function renderSelectedCards() {
+  el.selectedCards.innerHTML = state.selected.map((item, index) => cardResultMarkup(item, index)).join('');
+  el.followUpResults.innerHTML = state.followUps.map((followUp, followIndex) => {
+    const definition = getFollowUpDefinition(followUp.spread);
+    return `<section class="followup-result">
+      <div class="followup-result-head">
+        <p class="eyebrow">추가 질문 ${followIndex + 1} · ${escapeHtml(definition.label)}</p>
+        <h3>${escapeHtml(followUp.question)}</h3>
+      </div>
+      <div class="selected-cards">${followUp.cards.map((item, index) => cardResultMarkup(item, index)).join('')}</div>
+    </section>`;
+  }).join('');
+}
+
+const FOLLOWUP_SUGGESTIONS = {
+  love: ['상대의 실제 행동 의지는?', '관계를 막는 가장 큰 장애물은?', '내가 놓치고 있는 신호는?'],
+  career: ['진행이 늦어지는 가장 큰 이유는?', '다음 단계에서 준비할 것은?', '내 강점을 더 보여주려면?'],
+  money: ['가장 먼저 막아야 할 금전 위험은?', '새로운 수입 기회는 어디에 있나?', '지금 피해야 할 선택은?'],
+  relationship: ['갈등의 숨은 원인은?', '어떤 경계를 세워야 하나?', '관계를 회복하려면 무엇이 필요한가?'],
+  decision: ['결정에서 가장 중요하게 봐야 할 기준은?', '선택 전에 놓친 변수는?', '어느 쪽이 후회를 덜 남길까?'],
+  other: ['결과를 가르는 핵심 변수는?', '지금 한 번 더 해도 괜찮을까?', '내가 놓치고 있는 위험은?']
+};
+
+function totalDrawnCardCount() {
+  return state.selected.length + state.followUps.reduce((sum, item) => sum + item.cards.length, 0);
+}
+
+function updateFollowUpPanel() {
+  const suggestions = FOLLOWUP_SUGGESTIONS[state.category] || [];
+  el.followUpSuggestions.innerHTML = suggestions.map(question => `<button class="followup-suggestion" type="button" data-followup-suggestion="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join('');
+  const total = totalDrawnCardCount();
+  const remainingLimit = Math.max(0, 30 - total);
+  el.followUpLimitNote.textContent = `현재 총 ${total}장 · 남은 덱 ${state.shuffled.length}장 · 최대 ${remainingLimit}장까지 추가 가능`;
+  document.querySelectorAll('input[name="followUpMode"]').forEach(input => {
+    const needed = getFollowUpDefinition(input.value).positions.length;
+    input.disabled = needed > state.shuffled.length || needed > remainingLimit;
+    input.closest('.followup-mode').style.opacity = input.disabled ? '.42' : '1';
+  });
+  const checked = document.querySelector('input[name="followUpMode"]:checked');
+  if (checked?.disabled) {
+    const available = [...document.querySelectorAll('input[name="followUpMode"]')].find(input => !input.disabled);
+    if (available) available.checked = true;
+  }
+}
+
+function startFollowUpReading() {
+  const question = el.followUpQuestion.value.trim();
+  if (question.length < 3) {
+    toast('추가로 궁금한 질문을 적어주세요.');
+    el.followUpQuestion.focus();
+    return;
+  }
+  const modeInput = document.querySelector('input[name="followUpMode"]:checked');
+  if (!modeInput || modeInput.disabled) {
+    toast('현재 남은 카드로 선택할 수 있는 추가 배열이 없습니다.');
+    return;
+  }
+  const definition = getFollowUpDefinition(modeInput.value);
+  const total = totalDrawnCardCount();
+  if (total + definition.positions.length > 30) {
+    toast('추가 카드는 기본 카드와 합쳐 최대 30장까지 뽑을 수 있습니다.');
+    return;
+  }
+  if (state.shuffled.length < definition.positions.length) {
+    toast('남은 카드가 부족합니다.');
+    return;
+  }
+
+  state.pendingFollowUp = {
+    id: crypto.randomUUID ? crypto.randomUUID() : `followup-${Date.now()}`,
+    question,
+    spread: modeInput.value,
+    cards: []
+  };
+  state.drawContext = 'followup';
+  state.pendingSelectionIds = [];
+  state.wheelIndex = Math.floor(state.shuffled.length / 2);
+  prepareDrawHeader();
+  renderDeck();
+  showView('draw');
+}
+
+function cancelCurrentDraw() {
+  if (state.drawContext === 'followup' && state.pendingFollowUp) {
+    state.pendingFollowUp = null;
+    state.drawContext = 'base';
+    state.isSelecting = false;
+    state.pendingSelectionIds = [];
+    renderSelectedCards();
+    updateFollowUpPanel();
+    showView('result');
+    toast('추가 질문 뽑기를 취소했습니다.');
+    return;
+  }
+  resetHome();
+}
+
+async function revealResult() {
+  renderSelectedCards();
+  const spread = getSpreadDefinition();
+  el.resultQuestion.textContent = `“${state.question}”`;
+  el.resultMeta.textContent = `${CATEGORY_LABELS[state.category]} · ${spread.label} · ${TONE_LABELS[state.tone]}`;
+  el.followUpQuestion.value = '';
+  updateFollowUpPanel();
+  showView('result');
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const paragraphs = String(text || '').split(/\n+/);
+  const lines = [];
+  paragraphs.forEach((paragraph, paragraphIndex) => {
+    const chars = [...paragraph];
+    let line = '';
+    chars.forEach(char => {
+      const test = line + char;
+      if (line && ctx.measureText(test).width > maxWidth) {
+        lines.push(line);
+        line = char;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    if (paragraphIndex < paragraphs.length - 1) lines.push('');
+  });
+  return lines;
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = Infinity) {
+  const lines = wrapCanvasText(ctx, text, maxWidth).slice(0, maxLines);
+  lines.forEach((line, index) => ctx.fillText(line, x, y + index * lineHeight));
+  return y + lines.length * lineHeight;
+}
+
+function loadCanvasImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function roundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+async function createResultCanvas() {
+  if (!state.selected.length) throw new Error('저장할 결과가 없습니다.');
+
+  const width = 1200;
+  const innerWidth = 1000;
+  const sections = [
+    { title: `기본 리딩 · ${getSpreadDefinition().label}`, question: state.question, cards: state.selected, isBase: true },
+    ...state.followUps.map((followUp, index) => ({
+      title: `추가 질문 ${index + 1} · ${getFollowUpDefinition(followUp.spread).label}`,
+      question: followUp.question,
+      cards: followUp.cards,
+      isBase: false
+    }))
+  ];
+
+  const probe = document.createElement('canvas').getContext('2d');
+  const sectionLayouts = [];
+  let yCursor = 268;
+
+  for (const section of sections) {
+    probe.font = section.isBase ? '500 28px system-ui, sans-serif' : '600 25px system-ui, sans-serif';
+    const questionLines = wrapCanvasText(probe, `“${section.question}”`, innerWidth - 80).slice(0, 4);
+    const count = section.cards.length;
+    const cardWidth = count === 1 ? 270 : count <= 3 ? 220 : count <= 5 ? 178 : 150;
+    const cardHeight = Math.round(cardWidth * 1.75);
+    const gapX = count <= 3 ? 46 : 24;
+    const maxCols = Math.max(1, Math.floor((innerWidth + gapX) / (cardWidth + gapX)));
+    const cols = Math.min(count, maxCols);
+    const rows = Math.ceil(count / cols);
+    const headerHeight = 54 + questionLines.length * 38 + 28;
+    const rowHeight = cardHeight + 104;
+    const sectionHeight = headerHeight + rows * rowHeight + Math.max(0, rows - 1) * 28 + 44;
+    sectionLayouts.push({ ...section, questionLines, cardWidth, cardHeight, gapX, cols, rows, headerHeight, rowHeight, top: yCursor, height: sectionHeight });
+    yCursor += sectionHeight + 26;
+  }
+
+  const footerY = yCursor + 46;
+  const height = Math.max(1180, footerY + 100);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, '#100b19');
+  bg.addColorStop(.55, '#191126');
+  bg.addColorStop(1, '#091425');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  const glow = ctx.createRadialGradient(950, 160, 20, 950, 160, 520);
+  glow.addColorStop(0, 'rgba(126, 95, 180, .25)');
+  glow.addColorStop(1, 'rgba(126, 95, 180, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = 'rgba(218, 187, 126, .48)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(44, 44, width - 88, height - 88);
+  ctx.strokeStyle = 'rgba(255, 255, 255, .08)';
+  ctx.strokeRect(58, 58, width - 116, height - 116);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#d9bd82';
+  ctx.font = '700 22px system-ui, sans-serif';
+  ctx.fillText('성공 매타', width / 2, 112);
+  ctx.fillStyle = '#f5edf8';
+  ctx.font = '700 50px Georgia, serif';
+  ctx.fillText('카드가 보여준 흐름', width / 2, 180);
+  ctx.fillStyle = '#a99db5';
+  ctx.font = '600 22px system-ui, sans-serif';
+  ctx.fillText(`${CATEGORY_LABELS[state.category]} · ${getSpreadDefinition().label} · ${TONE_LABELS[state.tone]}`, width / 2, 226);
+
+  const allCards = sections.flatMap(section => section.cards);
+  const loaded = await Promise.all(allCards.map(item => loadCanvasImage(item.card.image)));
+  const imageById = new Map();
+  allCards.forEach((item, index) => imageById.set(item.card.id, loaded[index]));
+
+  sectionLayouts.forEach((section, sectionIndex) => {
+    let y = section.top;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#d9bd82';
+    ctx.font = '800 18px system-ui, sans-serif';
+    ctx.fillText(section.title, width / 2, y);
+    y += 42;
+    ctx.fillStyle = '#eee6f2';
+    ctx.font = section.isBase ? '500 28px system-ui, sans-serif' : '600 25px system-ui, sans-serif';
+    section.questionLines.forEach((line, index) => ctx.fillText(line, width / 2, y + index * 38));
+    y += section.questionLines.length * 38 + 28;
+
+    for (let row = 0; row < section.rows; row++) {
+      const rowCards = section.cards.slice(row * section.cols, (row + 1) * section.cols);
+      const rowWidth = rowCards.length * section.cardWidth + Math.max(0, rowCards.length - 1) * section.gapX;
+      const startX = (width - rowWidth) / 2;
+      rowCards.forEach((item, index) => {
+        const x = startX + index * (section.cardWidth + section.gapX);
+        const image = imageById.get(item.card.id);
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, .58)';
+        ctx.shadowBlur = 28;
+        ctx.shadowOffsetY = 18;
+        if (item.direction === 'reversed') {
+          ctx.translate(x + section.cardWidth / 2, y + section.cardHeight / 2);
+          ctx.rotate(Math.PI);
+          ctx.drawImage(image, -section.cardWidth / 2, -section.cardHeight / 2, section.cardWidth, section.cardHeight);
+        } else {
+          ctx.drawImage(image, x, y, section.cardWidth, section.cardHeight);
+        }
+        ctx.restore();
+
+        const centerX = x + section.cardWidth / 2;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#d9bd82';
+        ctx.font = `800 ${section.cardWidth < 170 ? 14 : 16}px system-ui, sans-serif`;
+        ctx.fillText(item.position.label, centerX, y + section.cardHeight + 30);
+        ctx.fillStyle = '#f4edf7';
+        ctx.font = `700 ${section.cardWidth < 170 ? 16 : 19}px system-ui, sans-serif`;
+        ctx.fillText(item.card.name, centerX, y + section.cardHeight + 58);
+        ctx.fillStyle = item.direction === 'reversed' ? '#d8a9b8' : '#aebed8';
+        ctx.font = `600 ${section.cardWidth < 170 ? 14 : 16}px system-ui, sans-serif`;
+        ctx.fillText(item.direction === 'upright' ? '정방향' : '역방향', centerX, y + section.cardHeight + 84);
+      });
+      y += section.rowHeight + 28;
+    }
+
+    if (sectionIndex < sectionLayouts.length - 1) {
+      ctx.strokeStyle = 'rgba(255,255,255,.08)';
+      ctx.beginPath();
+      ctx.moveTo(170, section.top + section.height + 6);
+      ctx.lineTo(width - 170, section.top + section.height + 6);
+      ctx.stroke();
+    }
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(214, 200, 220, .62)';
+  ctx.font = '500 18px system-ui, sans-serif';
+  ctx.fillText('타로 결과는 오락과 자기 성찰을 위한 참고 자료입니다.', width / 2, footerY);
+  return canvas;
+}
+
+async function downloadResultImage() {
+  try {
+    toast('결과 PNG를 만들고 있습니다.');
+    const canvas = await createResultCanvas();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
+    if (!blob) throw new Error('이미지 생성 실패');
+
+    if (activeResultImageUrl) URL.revokeObjectURL(activeResultImageUrl);
+    activeResultImageUrl = URL.createObjectURL(blob);
+    activeResultImageDataUrl = canvas.toDataURL('image/png');
+    activeResultFilename = `success-maeta-${new Date().toISOString().slice(0, 10)}.png`;
+
+    el.resultImagePreview.src = activeResultImageDataUrl;
+    el.resultImageDownloadLink.href = activeResultImageUrl;
+    el.resultImageDownloadLink.download = activeResultFilename;
+    el.resultImageDownloadLink.setAttribute('aria-disabled', 'false');
+    el.openImageButton.disabled = false;
+
+    const directLink = document.createElement('a');
+    directLink.href = activeResultImageUrl;
+    directLink.download = activeResultFilename;
+    directLink.style.display = 'none';
+    document.body.appendChild(directLink);
+    directLink.click();
+    directLink.remove();
+
+    el.imageSaveNote.textContent = 'PNG 다운로드를 시작했습니다. 저장되지 않았다면 아래 ‘PNG 다시 저장하기’를 누르세요. 모바일 인앱 브라우저에서는 ‘이미지 크게 열기’ 후 길게 눌러 저장할 수 있습니다.';
+    if (!el.imageDialog.open) el.imageDialog.showModal();
+    toast('PNG 다운로드를 시작했습니다.');
+  } catch (error) {
+    console.error(error);
+    el.imageSaveNote.textContent = '이미지를 만들지 못했습니다. 크롬이나 사파리에서 다시 시도해주세요.';
+    if (!el.imageDialog.open) el.imageDialog.showModal();
+    toast('이미지를 만들지 못했습니다.');
+  }
+}
+
+function triggerPreparedImageDownload(event) {
+  if (!activeResultImageUrl || !activeResultFilename) {
+    if (event) event.preventDefault();
+    toast('먼저 결과 이미지를 만들어주세요.');
+    return;
+  }
+  el.resultImageDownloadLink.href = activeResultImageUrl;
+  el.resultImageDownloadLink.download = activeResultFilename;
+  toast('PNG 다운로드를 시작했습니다.');
+}
+
+const CATEGORY_PROMPT_RULES = {
+  love: `연애 질문으로 읽어주세요. 호감·끌림과 실제 관계 가능성을 구분하고, 감정과 행동, 관계의 지속 가능성을 따로 살펴주세요. 상대방의 마음을 사실처럼 단정하지 말고 카드가 보여주는 태도와 감정의 가능성으로 표현하세요. 재회·연락 질문이라면 그리움과 실제 행동 의지를 구분하고, 커플 질문이라면 애정과 관계 운영 능력을 구분해주세요.`,
+  career: `취업·직장 질문으로 읽어주세요. 질문자의 심리 상태와 회사·채용 담당자의 실제 움직임을 혼동하지 말고, 서류·면접·연락·합격·이직·퇴사 등 질문에 해당하는 현실 단계에 맞춰 해석하세요. 회복이나 자신감에 관한 카드가 나왔다고 외부 연락이나 합격으로 바로 바꾸지 말고, 외부 사건을 암시하는지 내부 상태를 말하는지 구분해주세요.`,
+  money: `금전 질문으로 읽어주세요. 수입·지출·현금 흐름·계약·투자·회수 가능성 중 질문이 실제로 묻는 대상을 먼저 구분하세요. 수익이나 손실을 확정하거나 근거 없는 금액·수익률을 만들지 말고, 기회와 위험, 통제 가능한 행동을 현실적으로 나눠주세요.`,
+  relationship: `인간관계 질문으로 읽어주세요. 상대의 속내를 사실처럼 단정하지 말고, 현재 관계의 힘의 균형·소통 방식·경계·신뢰·반복 패턴을 중심으로 해석하세요. 화해 가능성과 건강한 관계 가능성을 같은 것으로 보지 말고, 관계 유지가 질문자에게 실제로 이로운지도 함께 짚어주세요.`,
+  decision: `선택·결정 질문으로 읽어주세요. 질문에 적힌 선택지와 목표를 정확히 구분하고, 각 선택으로 얻는 것·감수할 것·되돌릴 수 있는지·후회 가능성을 함께 비교하세요. 단순히 좋은 카드가 많은 쪽을 정답으로 고르지 말고 질문자가 실제로 중요하게 여기는 기준과 현실적 대가를 중심으로 결론을 내리세요. 질문에 없는 선택지를 임의로 만들지 마세요.`,
+  other: `기타 질문으로 읽어주세요. 게임·가챠·구매·취미·일상 판단 등 질문이 실제로 묻는 대상을 먼저 정확히 파악하세요. 성공·실패를 확정하거나 실제 확률·금액·당첨 결과를 지어내지 말고, 현재 흐름·충동성·손실 가능성·통제 가능한 행동을 구분해주세요. 재미를 위한 질문이라도 과도한 반복 소비나 손실 위험이 보이면 현실적으로 짚어주세요.`
+};
+
+const QUESTION_INTENTS = {
+  yesno: {
+    label: '예·아니오 및 가능성 질문',
+    rule: `질문에 대해 긍정·유보·부정 중 어디에 더 가까운지 결론부터 밝히세요. 가능성 강도는 ‘낮음·다소 낮음·보통·다소 높음·높음’ 중 하나로 표현하되 임의의 확률 수치는 만들지 마세요. 카드가 긍정적이어도 질문의 실제 사건과 직접 연결되는지 확인하고, 내부 변화만 말하는 카드라면 외부 결과를 과장하지 마세요.`,
+    section: `### ⚖️ 가능성 판정
+긍정·유보·부정 중 어느 쪽인지와 가능성 강도를 카드 근거로 설명해주세요.`
+  },
+  timing: {
+    label: '시기 질문',
+    rule: `정확한 날짜나 특정 숫자를 억지로 만들어내지 마세요. 빠름·지연·정체·전환점처럼 카드가 보여주는 속도와, 결과가 움직이기 위해 필요한 조건을 설명하세요. 시기가 명확하지 않으면 ‘언제’보다 ‘무엇이 바뀐 뒤’에 초점을 맞추세요.`,
+    section: `### ⏳ 시기와 움직이는 조건
+빠름·지연·정체 여부와, 어떤 조건이 충족될 때 흐름이 움직이는지 설명해주세요.`
+  },
+  feelings: {
+    label: '상대방의 감정·속마음 질문',
+    rule: `상대방의 마음을 확인된 사실처럼 말하지 마세요. 카드가 암시하는 감정, 태도, 방어, 행동 의지의 가능성을 나눠 설명하고, 호감이 있어도 실제 행동이나 관계 의지가 있는지는 별도로 판단하세요.`,
+    section: `### 💭 감정과 행동 의지
+감정의 가능성, 겉으로 보이는 태도, 실제 행동으로 이어질 가능성을 분리해서 설명해주세요.`
+  },
+  comparison: {
+    label: '선택·비교 질문',
+    rule: `질문에 나온 선택지를 임의로 추가하거나 바꾸지 마세요. 무엇이 더 좋아 보이는지가 아니라 질문자의 목적에 어떤 선택이 더 맞는지, 얻는 것과 잃는 것, 피해야 할 함정을 기준으로 비교하세요. 카드 배열이 A/B 전용 배열이 아니라면 각 카드를 특정 선택지에 억지로 배정하지 마세요.`,
+    section: `### 🧭 선택 판정
+가장 유리한 기준, 얻는 것과 잃는 것, 피해야 할 선택을 분명히 정리해주세요.`
+  },
+  advice: {
+    label: '방법·조언 질문',
+    rule: `결과 예언보다 지금 바꿀 수 있는 행동과 우선순위를 중심으로 답하세요. 추상적인 마음가짐이 아니라 중단할 것, 시작할 것, 확인할 것을 구체적으로 나눠주세요.`,
+    section: `### 🎯 우선순위와 행동 처방
+지금 먼저 해야 할 것과 하지 말아야 할 것을 카드 근거로 정리해주세요.`
+  },
+  general: {
+    label: '상황·방향 질문',
+    rule: `억지로 예·아니오 판정을 만들지 말고, 현재 상황의 본질·가장 강한 흐름·장애물·유리한 방향을 중심으로 답하세요.`,
+    section: `### 🧭 핵심 방향
+현재 가장 강한 흐름과 유리한 방향, 피해야 할 방향을 카드 근거로 정리해주세요.`
+  }
+};
+
+function detectQuestionIntent(question) {
+  const q = String(question || '').trim();
+  const compact = q.replace(/\s+/g, '');
+
+  if (/(언제|시기|몇일|며칠|몇주|몇달|몇개월|얼마나걸|어느때|언제쯤)/.test(compact)) return 'timing';
+  if (/(속마음|진심|감정|마음이|마음은|나를좋아|저를좋아|날좋아|저한테.*호감|나한테.*호감|호감이|좋아하|싫어하|그리워|미련|어떻게생각)/.test(compact)) return 'feelings';
+  if (/(둘중|어느쪽|무엇을선택|뭘선택|고를까|선택할까|비교|\bvs\b|A와B|A,B)/i.test(q)) return 'comparison';
+  if (/(어떻게|무엇을해야|뭘해야|해야할까|방법|전략|조언|잘하려면|나아지려면|해결하려면)/.test(compact)) return 'advice';
+  if (/(일까|할까|될까|올까|있을까|없을까|인가요|나요\??$|까요\??$|가능할까|가능한가|합격|연락이올|재회할|성공할)/.test(compact)) return 'yesno';
+  return 'general';
+}
+
+function buildAiPrompt() {
+  const spreadInfo = getSpreadDefinition();
+  const cards = state.selected
+    .map((item, index) => `${index + 1}. ${item.position.label} — ${item.card.name} ${item.direction === 'upright' ? '정방향' : '역방향'}`)
+    .join('\n');
+
+  const toneInstruction = {
+    direct: `돌려 말하지 말고 현실적이고 직설적으로 해석해주세요. 듣기 좋은 말보다 카드가 실제로 기우는 방향을 우선하고, 애매한 표현으로 빠져나가지 마세요. 다만 확정적인 예언은 하지 마세요.`,
+    warm: `따뜻하고 다정하게 해석하되 불편한 신호를 숨기거나 근거 없는 희망을 만들지 마세요. 위로와 현실 판단을 분리하고, 상처 주지 않으면서도 결론은 분명하게 말해주세요.`,
+    mystic: `카드의 상징과 장면을 살려 신비롭고 몰입감 있게 해석해주세요. 다만 분위기만 잡느라 결론을 흐리거나, 운명·전생·영적 존재를 사실처럼 단정하지 마세요.`,
+    friend: `친한 친구가 옆에서 카드와 현실을 함께 짚어주듯 편하고 생생하게 말해주세요. 지나친 격식은 빼되, 가볍게 농담만 하거나 근거 없이 편들지 말고 내용은 구체적으로 작성해주세요.`
+  }[state.tone];
+
+  const intentKey = detectQuestionIntent(state.question);
+  const intent = QUESTION_INTENTS[intentKey];
+  const categoryRule = CATEGORY_PROMPT_RULES[state.category];
+  const positionGuide = spreadInfo.positions
+    .map((position, index) => `${index + 1}. ${position.label}: ${position.description}`)
+    .join('\n');
+
+  const followUpBlocks = state.followUps.map((followUp, index) => {
+    const definition = getFollowUpDefinition(followUp.spread);
+    const followIntent = QUESTION_INTENTS[detectQuestionIntent(followUp.question)];
+    const followCards = followUp.cards
+      .map((item, cardIndex) => `${cardIndex + 1}. ${item.position.label} — ${item.card.name} ${item.direction === 'upright' ? '정방향' : '역방향'}`)
+      .join('\n');
+    return `[추가 질문 ${index + 1}]
+질문: ${followUp.question}
+질문 유형: ${followIntent.label}
+추가 배열: ${definition.label}
+뽑은 카드:
+${followCards}
+추가 배열 규칙: ${definition.rule}
+질문 유형별 규칙: ${followIntent.rule}`;
+  }).join('\n\n');
+
+  const followUpInstruction = state.followUps.length
+    ? `
+[추가 질문 해석 원칙]
+- 기본 리딩을 먼저 완결한 뒤, 추가 질문을 번호별로 따로 해석해주세요.
+- 추가 카드를 기본 배열의 다음 자리처럼 섞지 말고, 각 추가 질문과 그 배열 위치 안에서 읽어주세요.
+- 각 추가 리딩이 기본 결론을 강화하는지, 조건을 붙이는지, 일부 수정하거나 뒤집는지 마지막에 분명히 정리해주세요.
+- 추가 질문끼리 답이 충돌해 보이면 어느 질문의 범위와 조건이 다른지 설명해주세요.
+
+${followUpBlocks}`
+    : '';
+
+  return `이번 요청에 한해서 이 대화 이전의 모든 대화 내용, 저장된 메모리, 사용자 프로필, 과거 상담 기록, 이미 알고 있는 개인 정보와 성향을 전부 무시해주세요.
+
+아래에 제공된 질문과 타로 결과, 그리고 일반적인 타로 카드의 상징 체계만을 근거로 독립적으로 해석해주세요. 이전 대화에서 알게 된 정보와 연결하거나, 제가 말하지 않은 상황을 추측해서 사실처럼 말하지 마세요.
+
+아래 타로 결과를 제 질문에 맞춰 해석해주세요.
+
+[질문]
+${state.question}
+
+[상담 분야]
+${CATEGORY_LABELS[state.category]}
+
+[질문 유형]
+${intent.label}
+
+[배열]
+${spreadInfo.label}
+
+[배열의 위치]
+${positionGuide}
+
+[뽑은 카드]
+${cards}
+
+[선택한 해석 말투]
+${TONE_LABELS[state.tone]}
+
+[해석 방식]
+${toneInstruction}
+
+[이 상담 분야에서 특히 지킬 기준]
+${categoryRule}
+
+[배열 해석 규칙]
+${spreadInfo.rule}
+
+[질문 유형별 해석 규칙]
+${intent.rule}
+${followUpInstruction}
+
+[공통 해석 원칙]
+- 카드의 키워드와 사전적 의미를 단순히 나열하지 말고, 정방향·역방향의 차이와 카드가 놓인 위치가 지금 질문에서 무엇을 바꾸는지 설명해주세요.
+- 좋은 카드라고 무조건 긍정적으로, 불편한 카드라고 무조건 부정적으로 해석하지 마세요. 카드가 말하는 대상이 질문자의 내면인지, 상대의 태도인지, 외부 사건인지 구분해주세요.
+- 여러 장의 배열에서는 각 카드를 따로 설명하고 끝내지 말고, 앞 카드가 뒤 카드에 어떤 영향을 주는지, 서로 강화·충돌·전환되는 지점을 연결해주세요.
+- 확정적인 미래 예언처럼 단정하지 말고 현재 흐름이 유지될 경우의 가능성으로 표현하세요. 그렇다고 ‘그럴 수도 있고 아닐 수도 있다’는 식으로 양쪽 가능성을 똑같이 늘어놓으며 회피하지는 마세요.
+- 카드에 없는 사건·인물·날짜·확률을 지어내지 마세요. 타로 해석과 현실에서 확인해야 할 사실을 분리해주세요.
+- 같은 내용을 표현만 바꿔 반복하지 말고, 카드 근거가 없는 상투적인 위로·겁주기·희망 회로는 빼주세요.
+- 질문자가 원하는 답보다 카드가 실제로 기우는 방향과 현실적으로 도움이 되는 내용을 우선해주세요.
+
+[반드시 포함할 내용]
+
+### 🔮 결론부터
+질문에 대한 답을 첫 문단에서 바로 말해주세요. 애매하게 서론을 길게 끌지 말고, 현재 흐름이 어느 쪽으로 기우는지 분명히 밝혀주세요.
+
+### 🃏 카드별 역할
+${spreadInfo.positions.length === 1 ? '이 한 장이 핵심 카드 위치에서 질문에 어떤 답을 주는지 설명해주세요.' : '각 카드가 놓인 위치의 역할을 반영해 설명하되, 카드 뜻을 따로 나열하는 데서 끝내지 마세요.'}
+
+### 🔗 ${spreadInfo.flowTitle}
+${spreadInfo.positions.length === 1 ? '한 카드 안에서 읽히는 원인, 현재 핵심, 예상 방향을 하나의 흐름으로 연결해주세요.' : '카드 사이의 인과관계, 강화, 충돌, 전환과 최종 흐름을 설명해주세요.'}
+
+${intent.section}
+
+### 🧊 희망 회로 끄고 현실 체크
+타로 해석과 별개로 실제 상황에서 확인해야 할 신호·변수·정보를 알려주세요. 질문자가 카드를 잘못 받아들이기 쉬운 지점도 직설적으로 짚어주세요.
+
+### 🎯 지금 할 일
+지금 바로 실행할 수 있는 구체적인 행동을 최대 3개만 제시해주세요. ‘긍정적으로 생각하기’, ‘그냥 기다리기’ 같은 추상적인 조언은 피해주세요.
+
+### 🚨 주의할 점과 반전 조건
+현재 해석을 과대해석하면 안 되는 이유, 흐름이 반대로 바뀔 수 있는 현실적인 조건, 놓치기 쉬운 위험을 설명해주세요.
+
+### 🧾 한 문장 결론
+마지막에는 질문에 대한 답을 한 문장으로 선명하게 정리해주세요.
+
+전체 답변은 카드 근거가 보이면서도 상담 글처럼 자연스럽고, 같은 문장을 반복하지 않으며, 읽는 재미가 있게 작성해주세요.`;
+}
+
+function legacyCopyText(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '0';
+  textarea.style.left = '0';
+  textarea.style.width = '2px';
+  textarea.style.height = '2px';
+  textarea.style.padding = '0';
+  textarea.style.border = '0';
+  textarea.style.opacity = '0.01';
+  document.body.appendChild(textarea);
+  textarea.focus({ preventScroll: true });
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch (error) { console.warn(error); }
+  textarea.remove();
+  return copied;
+}
+
+function openManualCopyDialog(prompt) {
+  el.copyPromptBox.value = prompt;
+  if (!el.copyDialog.open) el.copyDialog.showModal();
+  window.setTimeout(() => {
+    el.copyPromptBox.focus();
+    el.copyPromptBox.select();
+    el.copyPromptBox.setSelectionRange(0, el.copyPromptBox.value.length);
+  }, 60);
+}
+
+async function tryCopyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      console.warn('Clipboard API blocked; trying fallback.', error);
+    }
+  }
+  return legacyCopyText(text);
+}
+
+async function copyAiPrompt() {
+  const prompt = buildAiPrompt();
+  const copied = await tryCopyText(prompt);
+  if (copied) {
+    toast('AI 질문 문구를 복사했습니다.');
+    return;
+  }
+  openManualCopyDialog(prompt);
+  toast('자동 복사가 차단되어 문구를 선택해두었습니다.');
+}
+
+function saveCurrentReading() {
+  if (!state.selected.length) return;
+  const history = loadHistory();
+  const record = {
+    id: state.savedId || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    createdAt: new Date().toISOString(),
+    question: state.question,
+    category: state.category,
+    spread: state.spread,
+    tone: state.tone,
+    cards: state.selected.map(item => ({
+      id: item.card.id,
+      name: item.card.name,
+      direction: item.direction,
+      position: item.position.label
+    })),
+    followUps: state.followUps.map(followUp => ({
+      question: followUp.question,
+      spread: followUp.spread,
+      cards: followUp.cards.map(item => ({
+        id: item.card.id,
+        name: item.card.name,
+        direction: item.direction,
+        position: item.position.label
+      }))
+    }))
+  };
+
+  const existingIndex = history.findIndex(item => item.id === record.id);
+  if (existingIndex >= 0) history.splice(existingIndex, 1);
+  history.unshift(record);
+  try {
+    localStorage.setItem('tarot-history-v1', JSON.stringify(history.slice(0, 50)));
+    const updated = Boolean(state.savedId);
+    state.savedId = record.id;
+    toast(updated ? '추가 질문까지 기록을 업데이트했습니다.' : '이 브라우저에 카드 결과를 저장했습니다.');
+  } catch (error) {
+    console.error(error);
+    toast('브라우저 저장 공간을 사용할 수 없습니다. 이미지 저장을 이용해주세요.');
+  }
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem('tarot-history-v1') || '[]'); }
+  catch { return []; }
+}
+
+function deleteHistoryItem(id) {
+  const history = loadHistory();
+  const target = history.find(item => item.id === id);
+  if (!target) return;
+  if (!window.confirm('이 타로 기록만 삭제할까요?')) return;
+  const next = history.filter(item => item.id !== id);
+  try {
+    localStorage.setItem('tarot-history-v1', JSON.stringify(next));
+    renderHistory();
+    toast('선택한 기록을 삭제했습니다.');
+  } catch (error) {
+    console.error(error);
+    toast('기록을 삭제하지 못했습니다.');
+  }
+}
+
+function inferSpreadFromCardCount(count) {
+  if (count === 10) return 'celtic';
+  if (count === 7) return 'deep';
+  if (count === 5) return 'five';
+  if (count === 3) return 'three';
+  return 'one';
+}
+
+function hydrateSavedCard(savedCard, positions = []) {
+  const card = DECK.find(item => item.id === savedCard?.id)
+    || DECK.find(item => item.name === savedCard?.name);
+  if (!card) return null;
+  const position = positions.find(item => item.label === savedCard.position)
+    || { key: 'saved', label: savedCard.position || '카드', description: '저장된 리딩의 카드 위치' };
+  return {
+    card,
+    direction: savedCard.direction === 'reversed' ? 'reversed' : 'upright',
+    position
+  };
+}
+
+function openHistoryRecord(item) {
+  if (!item || !Array.isArray(item.cards) || !item.cards.length) {
+    toast('이 기록의 카드 정보를 불러올 수 없습니다.');
+    return;
+  }
+
+  state.question = item.question || '저장한 타로 질문';
+  state.category = CATEGORY_LABELS[item.category] ? item.category : 'other';
+  state.spread = SPREAD_LIBRARY[item.spread] ? item.spread : inferSpreadFromCardCount(item.cards.length);
+  state.tone = TONE_LABELS[item.tone] ? item.tone : 'direct';
+
+  const baseDefinition = getSpreadDefinition(state.spread, state.category);
+  state.selected = item.cards
+    .map(card => hydrateSavedCard(card, baseDefinition.positions))
+    .filter(Boolean);
+
+  state.followUps = (Array.isArray(item.followUps) ? item.followUps : []).map((followUp, index) => {
+    const spreadKey = FOLLOWUP_SPREADS[followUp.spread] ? followUp.spread : inferSpreadFromCardCount((followUp.cards || []).length) === 'five' ? 'deep5' : ((followUp.cards || []).length === 3 ? 'tail3' : 'clarify1');
+    const definition = getFollowUpDefinition(spreadKey);
+    return {
+      id: followUp.id || `saved-followup-${index}-${Date.now()}`,
+      question: followUp.question || `추가 질문 ${index + 1}`,
+      spread: spreadKey,
+      cards: (followUp.cards || []).map(card => hydrateSavedCard(card, definition.positions)).filter(Boolean)
+    };
+  }).filter(followUp => followUp.cards.length);
+
+  if (!state.selected.length) {
+    toast('저장된 카드와 현재 덱을 연결하지 못했습니다.');
+    return;
+  }
+
+  const usedCardIds = new Set([
+    ...state.selected.map(item => item.card.id),
+    ...state.followUps.flatMap(followUp => followUp.cards.map(item => item.card.id))
+  ]);
+  state.shuffled = shuffle(DECK.filter(card => !usedCardIds.has(card.id)));
+  state.pendingFollowUp = null;
+  state.drawContext = 'base';
+  state.pendingSelectionIds = [];
+  state.savedId = item.id || null;
+  state.isSelecting = false;
+  state.wheelIndex = Math.floor(state.shuffled.length / 2);
+
+  el.question.value = state.question;
+  el.questionCount.textContent = String(state.question.length);
+  const categoryInput = el.form.querySelector(`input[name="category"][value="${state.category}"]`);
+  const spreadInput = el.form.querySelector(`input[name="spread"][value="${state.spread}"]`);
+  if (categoryInput) categoryInput.checked = true;
+  if (spreadInput) spreadInput.checked = true;
+  el.tone.value = state.tone;
+
+  el.historyDialog.close();
+  revealResult();
+  toast('저장한 결과 화면을 다시 열었습니다.');
+}
+
+function renderHistory() {
+  const history = loadHistory();
+  el.historyList.innerHTML = '';
+  if (!history.length) {
+    el.historyList.innerHTML = '<p class="history-empty">아직 저장한 타로 기록이 없습니다.</p>';
+    return;
+  }
+  history.forEach(item => {
+    const node = el.historyTemplate.content.cloneNode(true);
+    node.querySelector('.history-date').textContent = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.createdAt));
+    node.querySelector('.history-category').textContent = CATEGORY_LABELS[item.category] || item.category;
+    node.querySelector('.history-question').textContent = item.question;
+    const cardsNode = node.querySelector('.history-cards');
+    cardsNode.innerHTML = item.cards.map(card => `<span>${escapeHtml(card.position)} · ${escapeHtml(card.name)} ${card.direction === 'upright' ? '정' : '역'}</span>`).join('');
+    if (Array.isArray(item.followUps) && item.followUps.length) {
+      const followWrap = document.createElement('div');
+      followWrap.className = 'history-followups';
+      followWrap.innerHTML = item.followUps.map((followUp, index) => `<div class="history-followup"><strong>추가 질문 ${index + 1}</strong> ${escapeHtml(followUp.question)}<br>${followUp.cards.map(card => `${escapeHtml(card.position)} · ${escapeHtml(card.name)} ${card.direction === 'upright' ? '정' : '역'}`).join(' / ')}</div>`).join('');
+      cardsNode.after(followWrap);
+    }
+    const article = node.querySelector('.history-item');
+    const deleteButton = node.querySelector('[data-delete-history-item]');
+    article.setAttribute('role', 'button');
+    article.setAttribute('tabindex', '0');
+    article.setAttribute('aria-label', `${item.question} 결과 다시 보기`);
+    article.addEventListener('click', event => {
+      if (event.target.closest('[data-delete-history-item]')) return;
+      openHistoryRecord(item);
+    });
+    article.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openHistoryRecord(item);
+    });
+    deleteButton.addEventListener('click', event => {
+      event.stopPropagation();
+      deleteHistoryItem(item.id);
+    });
+    el.historyList.appendChild(node);
+  });
+}
+
+let toastTimer;
+function toast(message) {
+  let node = document.querySelector('.toast');
+  if (!node) {
+    node = document.createElement('div');
+    node.className = 'toast';
+    document.body.appendChild(node);
+  }
+  node.textContent = message;
+  node.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => node.classList.remove('show'), 2400);
+}
+
+function resetHome() {
+  state.selected = [];
+  state.followUps = [];
+  state.pendingFollowUp = null;
+  state.drawContext = 'base';
+  state.savedId = null;
+  showView('home');
+}
+
+el.deckPrev.addEventListener('click', () => moveWheel(-1));
+el.deckNext.addEventListener('click', () => moveWheel(1));
+el.deckStage.addEventListener('keydown', event => {
+  if (event.key === 'ArrowLeft') { event.preventDefault(); moveWheel(-1); }
+  if (event.key === 'ArrowRight') { event.preventDefault(); moveWheel(1); }
+  if (event.key === 'Home') { event.preventDefault(); centerWheelOnIndex(0); }
+  if (event.key === 'End') { event.preventDefault(); centerWheelOnIndex(state.shuffled.length - 1); }
+});
+
+el.deckViewport.addEventListener('scroll', () => {
+  state.suppressClickUntil = Date.now() + 120;
+  scheduleWheelVisuals();
+  clearTimeout(wheelSettleTimer);
+  wheelSettleTimer = setTimeout(() => centerWheelOnIndex(state.wheelIndex), 110);
+}, { passive: true });
+
+el.deckViewport.addEventListener('wheel', event => {
+  if (state.isSelecting) return;
+  const dominant = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+  if (!dominant) return;
+  event.preventDefault();
+  state.suppressClickUntil = Date.now() + 180;
+  el.deckViewport.scrollBy({ left: dominant * .72, behavior: 'auto' });
+}, { passive: false });
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (el.draw.classList.contains('is-active') && !state.isSelecting) renderDeck();
+  }, 140);
+});
+
+el.form.addEventListener('submit', beginReading);
+el.confirmSelection.addEventListener('click', confirmCardSelection);
+el.question.addEventListener('input', () => { el.questionCount.textContent = String(el.question.value.length); });
+document.querySelectorAll('[data-go-home], [data-new-reading]').forEach(button => button.addEventListener('click', resetHome));
+document.querySelector('[data-cancel-draw]').addEventListener('click', cancelCurrentDraw);
+document.querySelector('[data-start-followup]').addEventListener('click', startFollowUpReading);
+el.followUpSuggestions.addEventListener('click', event => {
+  const button = event.target.closest('[data-followup-suggestion]');
+  if (!button) return;
+  el.followUpQuestion.value = button.dataset.followupSuggestion || button.textContent.trim();
+  el.followUpQuestion.focus();
+});
+document.querySelector('[data-download-result]').addEventListener('click', downloadResultImage);
+document.querySelector('[data-copy-prompt]').addEventListener('click', copyAiPrompt);
+document.querySelector('[data-save-reading]').addEventListener('click', saveCurrentReading);
+document.querySelector('[data-open-history]').addEventListener('click', () => { renderHistory(); el.historyDialog.showModal(); });
+document.querySelector('[data-close-history]').addEventListener('click', () => el.historyDialog.close());
+document.querySelector('[data-close-copy]').addEventListener('click', () => el.copyDialog.close());
+document.querySelector('[data-close-image]').addEventListener('click', () => el.imageDialog.close());
+document.querySelector('[data-download-png]').addEventListener('click', triggerPreparedImageDownload);
+document.querySelector('[data-open-image]').addEventListener('click', () => {
+  if (!activeResultImageDataUrl) return;
+  const opened = window.open();
+  if (!opened) {
+    toast('새 창이 차단됐습니다. 아래 미리보기 이미지를 길게 눌러 저장해주세요.');
+    return;
+  }
+  opened.document.write(`<title>${activeResultFilename || 'tarot-result.png'}</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#090611;min-height:100%;display:grid;place-items:center}img{display:block;max-width:100%;height:auto}</style><img src="${activeResultImageDataUrl}" alt="타로 결과 이미지">`);
+  opened.document.close();
+});
+document.querySelector('[data-select-copy]').addEventListener('click', () => {
+  el.copyPromptBox.focus();
+  el.copyPromptBox.select();
+  el.copyPromptBox.setSelectionRange(0, el.copyPromptBox.value.length);
+  toast('전체 문구를 선택했습니다. 복사를 눌러주세요.');
+});
+document.querySelector('[data-retry-copy]').addEventListener('click', async () => {
+  const copied = await tryCopyText(el.copyPromptBox.value);
+  if (copied) { el.copyDialog.close(); toast('AI 질문 문구를 복사했습니다.'); }
+  else { el.copyPromptBox.focus(); el.copyPromptBox.select(); toast('자동 복사가 차단되었습니다. 선택된 문구를 직접 복사해주세요.'); }
+});
+document.querySelector('[data-clear-history]').addEventListener('click', () => {
+  localStorage.removeItem('tarot-history-v1'); renderHistory(); toast('기록을 모두 삭제했습니다.');
+});
+[el.historyDialog, el.copyDialog, el.imageDialog].forEach(dialog => {
+  dialog.addEventListener('click', event => {
+    const rect = dialog.getBoundingClientRect();
+    const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+    if (outside) dialog.close();
+  });
+});
+
+window.addEventListener('beforeunload', () => {
+  if (activeResultImageUrl) URL.revokeObjectURL(activeResultImageUrl);
+});
+
+console.info(`Tarot deck loaded: ${DECK.length} cards · advanced spreads and follow-up draws ready`);
+
+  </script>
+</body>
+</html>
