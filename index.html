@@ -796,38 +796,78 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
 }
 
 
-/* Instagram in-app browser: screenshot-only image preview */
+/* Instagram in-app browser: screenshot-only, near-fullscreen preview. */
 .image-dialog.instagram-capture-mode {
-  width: min(860px, calc(100% - 12px));
-  max-height: calc(100dvh - 12px);
-  padding: 18px;
+  width: calc(100vw - 4px);
+  max-width: none;
+  height: calc(100dvh - 4px);
+  max-height: none;
+  margin: auto;
+  padding: 4px;
+  overflow: hidden;
 }
-.image-dialog.instagram-capture-mode .dialog-head { margin-bottom: 12px; }
+.image-dialog.instagram-capture-mode .image-dialog-actions {
+  display: none !important;
+}
+.image-dialog.instagram-capture-mode .dialog-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 42px;
+  margin: 0;
+  padding: 0 2px 2px;
+  align-items: center;
+  background: #171221;
+}
+.image-dialog.instagram-capture-mode .dialog-head > div {
+  display: none;
+}
+.image-dialog.instagram-capture-mode [data-close-image] {
+  position: relative;
+  z-index: 40;
+  width: 42px;
+  height: 42px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 .image-dialog.instagram-capture-mode .image-save-note {
-  margin: 0 0 10px;
+  margin: 0;
+  padding: 6px 5px 8px;
   text-align: center;
+  font-size: 13px;
+  line-height: 1.45;
   font-weight: 720;
 }
 .image-dialog.instagram-capture-mode .image-preview-wrap {
-  max-height: calc(100dvh - 170px);
+  height: calc(100dvh - 94px);
+  max-height: none;
   margin: 0;
-  padding: 4px;
+  padding: 0;
   overflow: auto;
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 .image-dialog.instagram-capture-mode .image-preview {
+  display: block;
   width: 100%;
+  min-width: 100%;
   max-width: none;
-  border-radius: 10px;
+  height: auto;
+  border-radius: 6px;
 }
 @media (max-width: 560px) {
   .image-dialog.instagram-capture-mode {
-    width: calc(100% - 8px);
-    max-height: calc(100dvh - 8px);
-    padding: 12px;
+    width: calc(100vw - 2px);
+    height: calc(100dvh - 2px);
+    padding: 2px;
   }
-  .image-dialog.instagram-capture-mode .dialog-head h2 { font-size: 23px; }
   .image-dialog.instagram-capture-mode .image-preview-wrap {
-    max-height: calc(100dvh - 148px);
+    height: calc(100dvh - 90px);
   }
 }
 
@@ -2241,8 +2281,12 @@ function triggerDirectImageDownload() {
 function updateImageSaveControls(environment = getSaveEnvironment()) {
   el.imageDialog.classList.toggle('instagram-capture-mode', environment.instagram);
 
-  if (environment.instagram || environment.kakao) {
-    el.imageDialogActions.style.display = 'none';
+  const hideActions = environment.instagram || environment.kakao;
+  el.imageDialogActions.hidden = hideActions;
+  el.imageDialogActions.setAttribute('aria-hidden', hideActions ? 'true' : 'false');
+  el.imageDialogActions.style.setProperty('display', hideActions ? 'none' : '', hideActions ? 'important' : '');
+
+  if (hideActions) {
     el.imageSaveNote.textContent = getImageSaveGuide(environment);
     return;
   }
@@ -2280,6 +2324,9 @@ async function downloadResultImage() {
     const environment = getSaveEnvironment();
     updateImageSaveControls(environment);
     if (!el.imageDialog.open) el.imageDialog.showModal();
+    el.imageDialog.scrollTop = 0;
+    const previewWrap = el.imageDialog.querySelector('.image-preview-wrap');
+    if (previewWrap) previewWrap.scrollTop = 0;
 
     if (environment.instagram) {
       toast('미리보기 이미지를 화면 캡처해주세요.');
@@ -2841,7 +2888,30 @@ document.querySelector('[data-save-reading]').addEventListener('click', saveCurr
 document.querySelector('[data-open-history]').addEventListener('click', () => { renderHistory(); el.historyDialog.showModal(); });
 document.querySelector('[data-close-history]').addEventListener('click', () => el.historyDialog.close());
 document.querySelector('[data-close-copy]').addEventListener('click', () => el.copyDialog.close());
-document.querySelector('[data-close-image]').addEventListener('click', () => el.imageDialog.close());
+function closeImageDialog(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  try {
+    if (el.imageDialog.open && typeof el.imageDialog.close === 'function') {
+      el.imageDialog.close();
+    }
+  } catch (error) {
+    console.warn('이미지 창 닫기 재시도:', error);
+  }
+  if (el.imageDialog.hasAttribute('open')) {
+    el.imageDialog.removeAttribute('open');
+  }
+}
+
+const closeImageButton = document.querySelector('[data-close-image]');
+closeImageButton.addEventListener('click', closeImageDialog, true);
+closeImageButton.addEventListener('touchend', closeImageDialog, { capture: true, passive: false });
+el.imageDialog.addEventListener('cancel', event => {
+  event.preventDefault();
+  closeImageDialog(event);
+});
 document.querySelector('[data-download-png]').addEventListener('click', triggerPreparedImageDownload);
 document.querySelector('[data-open-image]').addEventListener('click', () => {
   if (!activeResultImageDataUrl) return;
