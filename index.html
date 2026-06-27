@@ -259,14 +259,6 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
 .draw-instruction { margin: 0; color: var(--text); font-size: clamp(16px, 2.5vw, 19px); font-weight: 720; line-height: 1.55; }
 .draw-count { margin: 8px 0 0; color: var(--gold) !important; font-size: 15px; font-weight: 760; }
 .draw-progress { display: none; }
-.desktop-wheel-guide { display: none; margin: 10px 0 0; color: #9f93ad; font-size: 12px; line-height: 1.55; }
-@media (min-width: 861px) and (hover: hover) and (pointer: fine) { .desktop-wheel-guide { display: block; } }
-.result-step-guide { margin: 12px 0 0; color: var(--accent-soft) !important; font-size: 13px; font-weight: 720; line-height: 1.6; }
-.followup-next-guide { margin: -4px 0 18px; color: #d8cede; font-size: 12px; line-height: 1.6; }
-.result-save-actions .save-history-note { grid-column: 1; grid-row: 1; margin: 0 0 -2px; color: #8f839d; font-size: 11px; line-height: 1.5; text-align: center; word-break: keep-all; }
-.result-save-actions [data-save-reading] { grid-column: 1; grid-row: 2; }
-.result-save-actions [data-new-reading] { grid-column: 2; grid-row: 2; }
-.toast.is-instagram-guide { width: max-content; max-width: calc(100% - 24px); border-radius: 18px; line-height: 1.55; text-align: center; white-space: normal; word-break: keep-all; }
 .deck-carousel {
   width: 100%;
   display: grid;
@@ -457,9 +449,6 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   .selected-cards { gap: 14px; }
   .card-reading-row { grid-template-columns: 1fr; gap: 6px; }
   .result-actions, .image-dialog-actions { grid-template-columns: 1fr; }
-  .result-save-actions .save-history-note { grid-column: 1; grid-row: 1; }
-  .result-save-actions [data-save-reading] { grid-column: 1; grid-row: 2; }
-  .result-save-actions [data-new-reading] { grid-column: 1; grid-row: 3; }
   .followup-mode-grid { grid-template-columns: 1fr; }
   .followup-zone, .followup-result { padding: 18px; }
   .followup-result .revealed-card { width: min(170px, 43vw); }
@@ -782,6 +771,106 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   .hero-copy::before { inset: -18px -20px -14px; }
 }
 
+
+/* Mobile draw-view stability: pause decorative GPU effects only while the card wheel is open. */
+@media (max-width: 760px) {
+  body.is-drawing .celestial-sky,
+  body.is-drawing .ambient {
+    display: none !important;
+  }
+
+  body.is-drawing .deck-viewport {
+    scroll-behavior: auto !important;
+  }
+
+  body.is-drawing .pick-card,
+  body.is-drawing .pick-card:hover,
+  body.is-drawing .pick-card:focus-visible,
+  body.is-drawing .pick-card.is-centered {
+    filter: none !important;
+  }
+
+  body.is-drawing .pick-card.is-centered {
+    box-shadow: 0 18px 26px rgba(0, 0, 0, .42);
+  }
+}
+
+
+/* Instagram in-app browser: screenshot-only, near-fullscreen preview. */
+.image-dialog.instagram-capture-mode {
+  width: calc(100vw - 4px);
+  max-width: none;
+  height: calc(100dvh - 4px);
+  max-height: none;
+  margin: auto;
+  padding: 4px;
+  overflow: hidden;
+}
+.image-dialog.instagram-capture-mode .image-dialog-actions {
+  display: none !important;
+}
+.image-dialog.instagram-capture-mode .dialog-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 42px;
+  margin: 0;
+  padding: 0 2px 2px;
+  align-items: center;
+  background: #171221;
+}
+.image-dialog.instagram-capture-mode .dialog-head > div {
+  display: none;
+}
+.image-dialog.instagram-capture-mode [data-close-image] {
+  position: relative;
+  z-index: 40;
+  width: 42px;
+  height: 42px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.image-dialog.instagram-capture-mode .image-save-note {
+  margin: 0;
+  padding: 6px 5px 8px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 720;
+}
+.image-dialog.instagram-capture-mode .image-preview-wrap {
+  height: calc(100dvh - 94px);
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.image-dialog.instagram-capture-mode .image-preview {
+  display: block;
+  width: 100%;
+  min-width: 100%;
+  max-width: none;
+  height: auto;
+  border-radius: 6px;
+}
+@media (max-width: 560px) {
+  .image-dialog.instagram-capture-mode {
+    width: calc(100vw - 2px);
+    height: calc(100dvh - 2px);
+    padding: 2px;
+  }
+  .image-dialog.instagram-capture-mode .image-preview-wrap {
+    height: calc(100dvh - 90px);
+  }
+}
+
 </style>
 </head>
 <body>
@@ -923,7 +1012,6 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
         <p id="drawTitle" class="draw-instruction">질문을 생각하며 마음이 가는 카드를 고르세요.</p>
         <p id="drawHint" class="draw-count">1장을 선택하세요.</p>
         <p id="drawProgress" class="draw-progress" aria-live="polite">CARD 0 / 1</p>
-        <p class="desktop-wheel-guide">마우스 휠을 위아래로 굴려 카드를 둘러보세요.</p>
       </div>
       <div class="deck-carousel" aria-label="타로 카드 선택 영역">
         <button class="deck-nav deck-prev" id="deckPrev" type="button" aria-label="이전 카드 묶음">‹</button>
@@ -949,7 +1037,6 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
         <p class="eyebrow" id="resultMeta">TODAY'S READING</p>
         <h2 id="resultTitle">당신이 뽑은 카드</h2>
         <p class="result-question" id="resultQuestion"></p>
-        <p class="result-step-guide">카드를 확인한 뒤 아래로 내려 다음 단계를 진행해주세요.</p>
       </div>
 
       <div class="selected-cards" id="selectedCards"></div>
@@ -959,7 +1046,6 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
         <p class="eyebrow">FOLLOW-UP READING</p>
         <h3 id="followUpTitle">꼬리 질문으로 더 뽑기</h3>
         <p class="followup-description">기본 리딩에서 궁금증이 남은 부분을 새 질문으로 좁혀, 같은 덱의 남은 카드에서 이어서 뽑습니다.</p>
-        <p class="followup-next-guide">추가로 궁금한 부분이 없다면 아래로 내려 결과 이미지를 저장하고 AI 질문을 복사해주세요.</p>
         <label class="field-label" for="followUpQuestion">추가로 궁금한 질문</label>
         <textarea id="followUpQuestion" class="followup-input" maxlength="180" placeholder="예: 연락이 늦어지는 가장 큰 이유는 무엇일까요?"></textarea>
         <div class="followup-suggestions" id="followUpSuggestions" aria-label="추천 추가 질문"></div>
@@ -982,8 +1068,7 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
         </div>
       </div>
 
-      <div class="result-actions result-save-actions">
-        <p class="save-history-note">기록을 저장하면 상단 ‘기록’ 메뉴에서 이전 결과를 다시 볼 수 있어요.</p>
+      <div class="result-actions">
         <button class="secondary-btn" type="button" data-save-reading>기록 저장</button>
         <button class="secondary-btn" type="button" data-new-reading>새 질문 보기</button>
       </div>
@@ -1017,7 +1102,7 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
       <div><p class="eyebrow">SAVE IMAGE</p><h2>결과 이미지 PNG 저장</h2></div>
       <button class="icon-btn" type="button" data-close-image aria-label="닫기">×</button>
     </div>
-    <p class="image-save-note" id="imageSaveNote">PNG를 만드는 중입니다. 준비되면 다운로드를 자동으로 시작합니다.</p>
+    <p class="image-save-note" id="imageSaveNote">PNG를 만드는 중입니다. 인앱 브라우저에서 저장되지 않으면 완성된 미리보기 이미지를 화면 캡처해주세요.</p>
     <div class="image-preview-wrap">
       <img id="resultImagePreview" class="image-preview" alt="저장할 타로 결과 이미지 미리보기" />
     </div>
@@ -1308,7 +1393,7 @@ const DECK = buildDeck();
 const state = {
   question: '', category: 'love', spread: 'one', tone: 'direct',
   shuffled: [], selected: [], followUps: [], pendingFollowUp: null, drawContext: 'base', savedId: null, isSelecting: false,
-  pendingSelectionIds: [], wheelIndex: 0, suppressClickUntil: 0
+  pendingSelectionIds: [], wheelIndex: 0
 };
 
 const el = {
@@ -1319,12 +1404,13 @@ const el = {
   selectedCards: document.querySelector('#selectedCards'), followUpResults: document.querySelector('#followUpResults'), followUpQuestion: document.querySelector('#followUpQuestion'), followUpSuggestions: document.querySelector('#followUpSuggestions'), followUpLimitNote: document.querySelector('#followUpLimitNote'), resultQuestion: document.querySelector('#resultQuestion'), resultMeta: document.querySelector('#resultMeta'),
   historyDialog: document.querySelector('#historyDialog'), historyList: document.querySelector('#historyList'), historyTemplate: document.querySelector('#historyItemTemplate'),
   copyDialog: document.querySelector('#copyDialog'), copyPromptBox: document.querySelector('#copyPromptBox'),
-  imageDialog: document.querySelector('#imageDialog'), resultImagePreview: document.querySelector('#resultImagePreview'), resultImageDownloadLink: document.querySelector('#resultImageDownloadLink'), imageSaveNote: document.querySelector('#imageSaveNote'), openImageButton: document.querySelector('[data-open-image]')
+  imageDialog: document.querySelector('#imageDialog'), resultImagePreview: document.querySelector('#resultImagePreview'), resultImageDownloadLink: document.querySelector('#resultImageDownloadLink'), imageSaveNote: document.querySelector('#imageSaveNote'), openImageButton: document.querySelector('[data-open-image]'), imageDialogActions: document.querySelector('.image-dialog-actions')
 };
 
 let activeResultImageUrl = '';
 let activeResultImageDataUrl = '';
 let activeResultFilename = '';
+let activeResultImageBlob = null;
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -1531,6 +1617,7 @@ DECK.forEach(card => { card.image = cardFrontSvg(card); });
 function showView(name) {
   [el.home, el.draw, el.result].forEach(view => view.classList.remove('is-active'));
   ({ home: el.home, draw: el.draw, result: el.result })[name].classList.add('is-active');
+  document.body.classList.toggle('is-drawing', name === 'draw');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1749,7 +1836,7 @@ function renderDeck() {
 function selectCard(cardId, button) {
   const session = currentDrawSession();
   const needed = session.positions.length;
-  if (Date.now() < state.suppressClickUntil || state.isSelecting || !button) return;
+  if (state.isSelecting || !button) return;
   if (!state.shuffled.some(card => card.id === cardId)) return;
 
   const selectedIndex = state.pendingSelectionIds.indexOf(cardId);
@@ -2129,6 +2216,92 @@ async function createResultCanvas() {
   return canvas;
 }
 
+function getSaveEnvironment() {
+  const ua = navigator.userAgent || '';
+  const instagram = /Instagram/i.test(ua);
+  const kakao = /KAKAOTALK/i.test(ua);
+  const ios = /iPad|iPhone|iPod/i.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return { instagram, kakao, ios, inApp: instagram || kakao };
+}
+
+function getImageSaveGuide(environment = getSaveEnvironment(), shareAvailable = canSharePreparedImage()) {
+  if (environment.instagram) {
+    return '인스타그램에서는 아래 미리보기 이미지를 화면 캡처해주세요.';
+  }
+  if (environment.kakao) {
+    return '카카오톡에서는 아래 미리보기 이미지를 꾹 눌러 저장해주세요.';
+  }
+  if (environment.ios) {
+    return shareAvailable
+      ? 'PNG가 바로 저장되지 않으면 ‘이미지 공유·저장’을 눌러 공유 메뉴에서 저장해주세요. 그래도 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.'
+      : 'PNG가 바로 저장되지 않으면 아래 ‘PNG 다시 저장하기’를 눌러주세요. 그래도 저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.';
+  }
+  return 'PNG 다운로드를 시작했습니다. 저장되지 않았다면 아래 ‘PNG 다시 저장하기’를 누르세요. 인앱 브라우저에서 저장이 제한되면 미리보기 이미지를 화면 캡처해주세요.';
+}
+
+function canSharePreparedImage() {
+  if (!activeResultImageBlob || !activeResultFilename || typeof File === 'undefined' || !navigator.share) return false;
+  try {
+    const file = new File([activeResultImageBlob], activeResultFilename, { type: 'image/png' });
+    return !navigator.canShare || navigator.canShare({ files: [file] });
+  } catch (error) {
+    return false;
+  }
+}
+
+async function sharePreparedImage() {
+  if (!canSharePreparedImage()) return false;
+  try {
+    const file = new File([activeResultImageBlob], activeResultFilename, { type: 'image/png' });
+    await navigator.share({
+      files: [file],
+      title: '성공 매타 타로 결과'
+    });
+    return true;
+  } catch (error) {
+    if (error && error.name !== 'AbortError') console.warn('이미지 공유 실패:', error);
+    return false;
+  }
+}
+
+function triggerDirectImageDownload() {
+  if (!activeResultImageUrl || !activeResultFilename) return false;
+  const directLink = document.createElement('a');
+  directLink.href = activeResultImageUrl;
+  directLink.download = activeResultFilename;
+  directLink.rel = 'noopener';
+  directLink.style.display = 'none';
+  document.body.appendChild(directLink);
+  directLink.click();
+  directLink.remove();
+  return true;
+}
+
+function updateImageSaveControls(environment = getSaveEnvironment()) {
+  el.imageDialog.classList.toggle('instagram-capture-mode', environment.instagram);
+
+  const hideActions = environment.instagram || environment.kakao;
+  el.imageDialogActions.hidden = hideActions;
+  el.imageDialogActions.setAttribute('aria-hidden', hideActions ? 'true' : 'false');
+  el.imageDialogActions.style.setProperty('display', hideActions ? 'none' : '', hideActions ? 'important' : '');
+
+  if (hideActions) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    return;
+  }
+
+  el.imageDialogActions.style.removeProperty('display');
+  const prefersShare = environment.inApp || environment.ios;
+  el.resultImageDownloadLink.textContent = prefersShare && canSharePreparedImage()
+    ? '이미지 공유·저장'
+    : 'PNG 다시 저장하기';
+  el.openImageButton.textContent = environment.inApp
+    ? '화면 캡처 안내'
+    : '이미지 크게 열기';
+  el.imageSaveNote.textContent = getImageSaveGuide(environment);
+}
+
 async function downloadResultImage() {
   try {
     toast('결과 PNG를 만들고 있습니다.');
@@ -2137,6 +2310,7 @@ async function downloadResultImage() {
     if (!blob) throw new Error('이미지 생성 실패');
 
     if (activeResultImageUrl) URL.revokeObjectURL(activeResultImageUrl);
+    activeResultImageBlob = blob;
     activeResultImageUrl = URL.createObjectURL(blob);
     activeResultImageDataUrl = canvas.toDataURL('image/png');
     activeResultFilename = `success-maeta-${new Date().toISOString().slice(0, 10)}.png`;
@@ -2147,17 +2321,38 @@ async function downloadResultImage() {
     el.resultImageDownloadLink.setAttribute('aria-disabled', 'false');
     el.openImageButton.disabled = false;
 
-    const directLink = document.createElement('a');
-    directLink.href = activeResultImageUrl;
-    directLink.download = activeResultFilename;
-    directLink.style.display = 'none';
-    document.body.appendChild(directLink);
-    directLink.click();
-    directLink.remove();
-
-    el.imageSaveNote.textContent = 'PNG 다운로드를 시작했습니다. 저장되지 않았다면 아래 ‘PNG 다시 저장하기’를 누르세요. 모바일 인앱 브라우저에서는 ‘이미지 크게 열기’ 후 길게 눌러 저장할 수 있습니다.';
+    const environment = getSaveEnvironment();
+    updateImageSaveControls(environment);
     if (!el.imageDialog.open) el.imageDialog.showModal();
-    showDownloadToast();
+    el.imageDialog.scrollTop = 0;
+    const previewWrap = el.imageDialog.querySelector('.image-preview-wrap');
+    if (previewWrap) previewWrap.scrollTop = 0;
+
+    if (environment.instagram) {
+      toast('미리보기 이미지를 화면 캡처해주세요.');
+      return;
+    }
+
+    if (environment.kakao) {
+      toast('미리보기 이미지를 꾹 눌러 저장해주세요.');
+      return;
+    }
+
+    if ((environment.inApp || environment.ios) && canSharePreparedImage()) {
+      const shared = await sharePreparedImage();
+      if (shared) {
+        toast('이미지 공유를 완료했습니다.');
+      } else {
+        toast('저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.');
+      }
+      return;
+    }
+
+    if (!environment.inApp && triggerDirectImageDownload()) {
+      toast('PNG 다운로드를 시작했습니다.');
+    } else {
+      toast('저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.');
+    }
   } catch (error) {
     console.error(error);
     el.imageSaveNote.textContent = '이미지를 만들지 못했습니다. 크롬이나 사파리에서 다시 시도해주세요.';
@@ -2166,15 +2361,39 @@ async function downloadResultImage() {
   }
 }
 
-function triggerPreparedImageDownload(event) {
-  if (!activeResultImageUrl || !activeResultFilename) {
-    if (event) event.preventDefault();
+async function triggerPreparedImageDownload(event) {
+  if (event) event.preventDefault();
+  if (!activeResultImageBlob || !activeResultImageUrl || !activeResultFilename) {
     toast('먼저 결과 이미지를 만들어주세요.');
     return;
   }
-  el.resultImageDownloadLink.href = activeResultImageUrl;
-  el.resultImageDownloadLink.download = activeResultFilename;
-  showDownloadToast();
+
+  const environment = getSaveEnvironment();
+  if (environment.instagram) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('미리보기 이미지를 화면 캡처해주세요.');
+    return;
+  }
+
+  if (environment.kakao) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('미리보기 이미지를 꾹 눌러 저장해주세요.');
+    return;
+  }
+
+  if ((environment.inApp || environment.ios) && canSharePreparedImage()) {
+    const shared = await sharePreparedImage();
+    if (shared) toast('이미지 공유를 완료했습니다.');
+    else toast('저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.');
+    return;
+  }
+
+  if (!environment.inApp && triggerDirectImageDownload()) {
+    toast('PNG 다운로드를 시작했습니다.');
+  } else {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('미리보기 이미지를 화면 캡처해주세요.');
+  }
 }
 
 const CATEGORY_PROMPT_RULES = {
@@ -2599,23 +2818,8 @@ function renderHistory() {
   });
 }
 
-function isInstagramInAppBrowser() {
-  return /Instagram/i.test(navigator.userAgent || '');
-}
-
-function showDownloadToast() {
-  const instagram = isInstagramInAppBrowser();
-  toast(
-    instagram
-      ? '캡처 후 뒤로가기 금지! 반드시 오른쪽 위 X로 닫아주시고, 아래 ‘AI 질문 복사’ 버튼을 눌러 이미지와 함께 AI에 넣어주세요.'
-      : 'PNG 다운로드를 시작했습니다.',
-    instagram ? 7600 : 2400,
-    instagram
-  );
-}
-
 let toastTimer;
-function toast(message, duration = 2400, instagramGuide = false) {
+function toast(message) {
   let node = document.querySelector('.toast');
   if (!node) {
     node = document.createElement('div');
@@ -2623,13 +2827,9 @@ function toast(message, duration = 2400, instagramGuide = false) {
     document.body.appendChild(node);
   }
   node.textContent = message;
-  node.classList.toggle('is-instagram-guide', instagramGuide);
   node.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    node.classList.remove('show');
-    node.classList.remove('is-instagram-guide');
-  }, duration);
+  toastTimer = setTimeout(() => node.classList.remove('show'), 2400);
 }
 
 function resetHome() {
@@ -2651,10 +2851,7 @@ el.deckStage.addEventListener('keydown', event => {
 });
 
 el.deckViewport.addEventListener('scroll', () => {
-  state.suppressClickUntil = Date.now() + 120;
   scheduleWheelVisuals();
-  clearTimeout(wheelSettleTimer);
-  wheelSettleTimer = setTimeout(() => centerWheelOnIndex(state.wheelIndex), 110);
 }, { passive: true });
 
 el.deckViewport.addEventListener('wheel', event => {
@@ -2662,7 +2859,6 @@ el.deckViewport.addEventListener('wheel', event => {
   const dominant = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
   if (!dominant) return;
   event.preventDefault();
-  state.suppressClickUntil = Date.now() + 180;
   el.deckViewport.scrollBy({ left: dominant * .72, behavior: 'auto' });
 }, { passive: false });
 
@@ -2692,13 +2888,43 @@ document.querySelector('[data-save-reading]').addEventListener('click', saveCurr
 document.querySelector('[data-open-history]').addEventListener('click', () => { renderHistory(); el.historyDialog.showModal(); });
 document.querySelector('[data-close-history]').addEventListener('click', () => el.historyDialog.close());
 document.querySelector('[data-close-copy]').addEventListener('click', () => el.copyDialog.close());
-document.querySelector('[data-close-image]').addEventListener('click', () => el.imageDialog.close());
+function closeImageDialog(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  try {
+    if (el.imageDialog.open && typeof el.imageDialog.close === 'function') {
+      el.imageDialog.close();
+    }
+  } catch (error) {
+    console.warn('이미지 창 닫기 재시도:', error);
+  }
+  if (el.imageDialog.hasAttribute('open')) {
+    el.imageDialog.removeAttribute('open');
+  }
+}
+
+const closeImageButton = document.querySelector('[data-close-image]');
+closeImageButton.addEventListener('click', closeImageDialog, true);
+closeImageButton.addEventListener('touchend', closeImageDialog, { capture: true, passive: false });
+el.imageDialog.addEventListener('cancel', event => {
+  event.preventDefault();
+  closeImageDialog(event);
+});
 document.querySelector('[data-download-png]').addEventListener('click', triggerPreparedImageDownload);
 document.querySelector('[data-open-image]').addEventListener('click', () => {
   if (!activeResultImageDataUrl) return;
+  const environment = getSaveEnvironment();
+  if (environment.inApp) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('아래 미리보기 이미지를 화면 캡처해주세요.');
+    return;
+  }
   const opened = window.open();
   if (!opened) {
-    toast('새 창이 차단됐습니다. 아래 미리보기 이미지를 길게 눌러 저장해주세요.');
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('새 창이 차단됐습니다. 미리보기 이미지를 화면 캡처해주세요.');
     return;
   }
   opened.document.write(`<title>${activeResultFilename || 'tarot-result.png'}</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#090611;min-height:100%;display:grid;place-items:center}img{display:block;max-width:100%;height:auto}</style><img src="${activeResultImageDataUrl}" alt="타로 결과 이미지">`);
