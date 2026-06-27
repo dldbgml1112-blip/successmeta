@@ -771,6 +771,30 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   .hero-copy::before { inset: -18px -20px -14px; }
 }
 
+
+/* Mobile draw-view stability: pause decorative GPU effects only while the card wheel is open. */
+@media (max-width: 760px) {
+  body.is-drawing .celestial-sky,
+  body.is-drawing .ambient {
+    display: none !important;
+  }
+
+  body.is-drawing .deck-viewport {
+    scroll-behavior: auto !important;
+  }
+
+  body.is-drawing .pick-card,
+  body.is-drawing .pick-card:hover,
+  body.is-drawing .pick-card:focus-visible,
+  body.is-drawing .pick-card.is-centered {
+    filter: none !important;
+  }
+
+  body.is-drawing .pick-card.is-centered {
+    box-shadow: 0 18px 26px rgba(0, 0, 0, .42);
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1002,7 +1026,7 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
       <div><p class="eyebrow">SAVE IMAGE</p><h2>결과 이미지 PNG 저장</h2></div>
       <button class="icon-btn" type="button" data-close-image aria-label="닫기">×</button>
     </div>
-    <p class="image-save-note" id="imageSaveNote">PNG를 만드는 중입니다. 준비되면 다운로드를 자동으로 시작합니다.</p>
+    <p class="image-save-note" id="imageSaveNote">PNG를 만드는 중입니다. 인앱 브라우저에서 저장되지 않으면 완성된 미리보기 이미지를 화면 캡처해주세요.</p>
     <div class="image-preview-wrap">
       <img id="resultImagePreview" class="image-preview" alt="저장할 타로 결과 이미지 미리보기" />
     </div>
@@ -1293,7 +1317,7 @@ const DECK = buildDeck();
 const state = {
   question: '', category: 'love', spread: 'one', tone: 'direct',
   shuffled: [], selected: [], followUps: [], pendingFollowUp: null, drawContext: 'base', savedId: null, isSelecting: false,
-  pendingSelectionIds: [], wheelIndex: 0, suppressClickUntil: 0
+  pendingSelectionIds: [], wheelIndex: 0
 };
 
 const el = {
@@ -1310,6 +1334,7 @@ const el = {
 let activeResultImageUrl = '';
 let activeResultImageDataUrl = '';
 let activeResultFilename = '';
+let activeResultImageBlob = null;
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -1516,6 +1541,7 @@ DECK.forEach(card => { card.image = cardFrontSvg(card); });
 function showView(name) {
   [el.home, el.draw, el.result].forEach(view => view.classList.remove('is-active'));
   ({ home: el.home, draw: el.draw, result: el.result })[name].classList.add('is-active');
+  document.body.classList.toggle('is-drawing', name === 'draw');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1734,7 +1760,7 @@ function renderDeck() {
 function selectCard(cardId, button) {
   const session = currentDrawSession();
   const needed = session.positions.length;
-  if (Date.now() < state.suppressClickUntil || state.isSelecting || !button) return;
+  if (state.isSelecting || !button) return;
   if (!state.shuffled.some(card => card.id === cardId)) return;
 
   const selectedIndex = state.pendingSelectionIds.indexOf(cardId);
@@ -2114,6 +2140,83 @@ async function createResultCanvas() {
   return canvas;
 }
 
+function getSaveEnvironment() {
+  const ua = navigator.userAgent || '';
+  const instagram = /Instagram/i.test(ua);
+  const kakao = /KAKAOTALK/i.test(ua);
+  const ios = /iPad|iPhone|iPod/i.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return { instagram, kakao, ios, inApp: instagram || kakao };
+}
+
+function getImageSaveGuide(environment = getSaveEnvironment(), shareAvailable = canSharePreparedImage()) {
+  if (environment.instagram) {
+    return shareAvailable
+      ? '인스타그램에서는 PNG 다운로드와 길게 눌러 저장이 제한될 수 있습니다. ‘이미지 공유·저장’을 눌러 저장을 시도하고, 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.'
+      : '인스타그램에서는 PNG 다운로드와 길게 눌러 저장이 제한될 수 있습니다. 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.';
+  }
+  if (environment.kakao) {
+    return shareAvailable
+      ? '카카오톡에서는 PNG 다운로드가 제한될 수 있습니다. ‘이미지 공유·저장’을 눌러 저장을 시도하고, 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.'
+      : '카카오톡에서는 PNG 다운로드가 제한될 수 있습니다. 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.';
+  }
+  if (environment.ios) {
+    return shareAvailable
+      ? 'PNG가 바로 저장되지 않으면 ‘이미지 공유·저장’을 눌러 공유 메뉴에서 저장해주세요. 그래도 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.'
+      : 'PNG가 바로 저장되지 않으면 아래 ‘PNG 다시 저장하기’를 눌러주세요. 그래도 저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.';
+  }
+  return 'PNG 다운로드를 시작했습니다. 저장되지 않았다면 아래 ‘PNG 다시 저장하기’를 누르세요. 인앱 브라우저에서 저장이 제한되면 미리보기 이미지를 화면 캡처해주세요.';
+}
+
+function canSharePreparedImage() {
+  if (!activeResultImageBlob || !activeResultFilename || typeof File === 'undefined' || !navigator.share) return false;
+  try {
+    const file = new File([activeResultImageBlob], activeResultFilename, { type: 'image/png' });
+    return !navigator.canShare || navigator.canShare({ files: [file] });
+  } catch (error) {
+    return false;
+  }
+}
+
+async function sharePreparedImage() {
+  if (!canSharePreparedImage()) return false;
+  try {
+    const file = new File([activeResultImageBlob], activeResultFilename, { type: 'image/png' });
+    await navigator.share({
+      files: [file],
+      title: '성공 매타 타로 결과'
+    });
+    return true;
+  } catch (error) {
+    if (error && error.name !== 'AbortError') console.warn('이미지 공유 실패:', error);
+    return false;
+  }
+}
+
+function triggerDirectImageDownload() {
+  if (!activeResultImageUrl || !activeResultFilename) return false;
+  const directLink = document.createElement('a');
+  directLink.href = activeResultImageUrl;
+  directLink.download = activeResultFilename;
+  directLink.rel = 'noopener';
+  directLink.style.display = 'none';
+  document.body.appendChild(directLink);
+  directLink.click();
+  directLink.remove();
+  return true;
+}
+
+function updateImageSaveControls(environment = getSaveEnvironment()) {
+  const prefersShare = environment.inApp || environment.ios;
+  el.resultImageDownloadLink.textContent = prefersShare && canSharePreparedImage()
+    ? '이미지 공유·저장'
+    : 'PNG 다시 저장하기';
+  el.openImageButton.textContent = environment.inApp
+    ? '화면 캡처 안내'
+    : '이미지 크게 열기';
+  el.imageSaveNote.textContent = getImageSaveGuide(environment);
+}
+
 async function downloadResultImage() {
   try {
     toast('결과 PNG를 만들고 있습니다.');
@@ -2122,6 +2225,7 @@ async function downloadResultImage() {
     if (!blob) throw new Error('이미지 생성 실패');
 
     if (activeResultImageUrl) URL.revokeObjectURL(activeResultImageUrl);
+    activeResultImageBlob = blob;
     activeResultImageUrl = URL.createObjectURL(blob);
     activeResultImageDataUrl = canvas.toDataURL('image/png');
     activeResultFilename = `success-maeta-${new Date().toISOString().slice(0, 10)}.png`;
@@ -2132,17 +2236,25 @@ async function downloadResultImage() {
     el.resultImageDownloadLink.setAttribute('aria-disabled', 'false');
     el.openImageButton.disabled = false;
 
-    const directLink = document.createElement('a');
-    directLink.href = activeResultImageUrl;
-    directLink.download = activeResultFilename;
-    directLink.style.display = 'none';
-    document.body.appendChild(directLink);
-    directLink.click();
-    directLink.remove();
-
-    el.imageSaveNote.textContent = 'PNG 다운로드를 시작했습니다. 저장되지 않았다면 아래 ‘PNG 다시 저장하기’를 누르세요. 모바일 인앱 브라우저에서는 ‘이미지 크게 열기’ 후 길게 눌러 저장할 수 있습니다.';
+    const environment = getSaveEnvironment();
+    updateImageSaveControls(environment);
     if (!el.imageDialog.open) el.imageDialog.showModal();
-    toast('PNG 다운로드를 시작했습니다.');
+
+    if ((environment.inApp || environment.ios) && canSharePreparedImage()) {
+      const shared = await sharePreparedImage();
+      if (shared) {
+        toast('이미지 공유를 완료했습니다.');
+      } else {
+        toast('저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.');
+      }
+      return;
+    }
+
+    if (!environment.inApp && triggerDirectImageDownload()) {
+      toast('PNG 다운로드를 시작했습니다.');
+    } else {
+      toast('저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.');
+    }
   } catch (error) {
     console.error(error);
     el.imageSaveNote.textContent = '이미지를 만들지 못했습니다. 크롬이나 사파리에서 다시 시도해주세요.';
@@ -2151,15 +2263,27 @@ async function downloadResultImage() {
   }
 }
 
-function triggerPreparedImageDownload(event) {
-  if (!activeResultImageUrl || !activeResultFilename) {
-    if (event) event.preventDefault();
+async function triggerPreparedImageDownload(event) {
+  if (event) event.preventDefault();
+  if (!activeResultImageBlob || !activeResultImageUrl || !activeResultFilename) {
     toast('먼저 결과 이미지를 만들어주세요.');
     return;
   }
-  el.resultImageDownloadLink.href = activeResultImageUrl;
-  el.resultImageDownloadLink.download = activeResultFilename;
-  toast('PNG 다운로드를 시작했습니다.');
+
+  const environment = getSaveEnvironment();
+  if ((environment.inApp || environment.ios) && canSharePreparedImage()) {
+    const shared = await sharePreparedImage();
+    if (shared) toast('이미지 공유를 완료했습니다.');
+    else toast('저장되지 않으면 미리보기 이미지를 화면 캡처해주세요.');
+    return;
+  }
+
+  if (!environment.inApp && triggerDirectImageDownload()) {
+    toast('PNG 다운로드를 시작했습니다.');
+  } else {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('미리보기 이미지를 화면 캡처해주세요.');
+  }
 }
 
 const CATEGORY_PROMPT_RULES = {
@@ -2617,10 +2741,7 @@ el.deckStage.addEventListener('keydown', event => {
 });
 
 el.deckViewport.addEventListener('scroll', () => {
-  state.suppressClickUntil = Date.now() + 120;
   scheduleWheelVisuals();
-  clearTimeout(wheelSettleTimer);
-  wheelSettleTimer = setTimeout(() => centerWheelOnIndex(state.wheelIndex), 110);
 }, { passive: true });
 
 el.deckViewport.addEventListener('wheel', event => {
@@ -2628,7 +2749,6 @@ el.deckViewport.addEventListener('wheel', event => {
   const dominant = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
   if (!dominant) return;
   event.preventDefault();
-  state.suppressClickUntil = Date.now() + 180;
   el.deckViewport.scrollBy({ left: dominant * .72, behavior: 'auto' });
 }, { passive: false });
 
@@ -2662,9 +2782,16 @@ document.querySelector('[data-close-image]').addEventListener('click', () => el.
 document.querySelector('[data-download-png]').addEventListener('click', triggerPreparedImageDownload);
 document.querySelector('[data-open-image]').addEventListener('click', () => {
   if (!activeResultImageDataUrl) return;
+  const environment = getSaveEnvironment();
+  if (environment.inApp) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('아래 미리보기 이미지를 화면 캡처해주세요.');
+    return;
+  }
   const opened = window.open();
   if (!opened) {
-    toast('새 창이 차단됐습니다. 아래 미리보기 이미지를 길게 눌러 저장해주세요.');
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('새 창이 차단됐습니다. 미리보기 이미지를 화면 캡처해주세요.');
     return;
   }
   opened.document.write(`<title>${activeResultFilename || 'tarot-result.png'}</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#090611;min-height:100%;display:grid;place-items:center}img{display:block;max-width:100%;height:auto}</style><img src="${activeResultImageDataUrl}" alt="타로 결과 이미지">`);
