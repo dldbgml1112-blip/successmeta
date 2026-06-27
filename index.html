@@ -344,18 +344,18 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   opacity: 1 !important;
   max-width: 850px;
   margin: 0 auto 22px;
-  padding: 17px 20px;
-  border: 2px solid rgba(230,209,166,.82);
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(202,170,114,.28), rgba(147,118,217,.18));
-  color: #fff8e8;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--accent-soft);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1.65;
   letter-spacing: -.018em;
   text-align: center;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 14px 34px rgba(0,0,0,.32);
-  text-shadow: 0 1px 12px rgba(0,0,0,.48);
+  box-shadow: none;
+  text-shadow: 0 1px 10px rgba(0,0,0,.38);
 }
 .followup-skip-guide { margin-top: -6px; }
 .history-save-guide { max-width: 850px; margin: 4px auto 9px; color: var(--muted); font-size: 11px; line-height: 1.55; text-align: center; }
@@ -392,15 +392,25 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   .draw-browse-guide-mobile { display: block; }
   .result-step-guide,
   .followup-skip-guide {
-    padding: 15px 16px;
+    padding: 0;
     font-size: 14px;
     line-height: 1.65;
   }
+  .ai-handoff {
+    padding: 19px 17px;
+    font-size: 13px;
+  }
+  .ai-handoff strong { font-size: 17px; }
 }
 
-#resultView .section-heading { margin-bottom: 14px; }
-.result-question { max-width: 720px; font-size: 16px; line-height: 1.7; }
+#resultView .section-heading { margin-bottom: 18px; text-align: center; }
+#resultView .section-heading .eyebrow { margin-bottom: 10px; }
+.result-question { max-width: 720px; margin: 12px auto 0; text-align: center; font-size: 16px; line-height: 1.7; }
 .selected-cards { display: flex; justify-content: center; gap: 28px; margin: 30px 0 44px; flex-wrap: wrap; }
+#resultView > .result-step-guide { margin: 0 auto 24px; }
+#resultView > .selected-cards { margin: 0 0 28px; }
+#resultView > .followup-results:empty { display: none; margin: 0; }
+#resultView > .followup-skip-guide { margin: 0 auto 24px; }
 .revealed-card { width: min(220px, 28vw); text-align: center; animation: cardIn .65s cubic-bezier(.2,.75,.2,1) both; }
 @keyframes cardIn { from { opacity: 0; transform: translateY(22px) rotateY(70deg); } to { opacity: 1; transform: none; } }
 .revealed-card .card-image-wrap { aspect-ratio: .57; border-radius: 17px; overflow: hidden; box-shadow: 0 24px 44px rgba(0,0,0,.42); }
@@ -414,8 +424,50 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
 .result-actions { max-width: 850px; margin: 18px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .result-share-zone .result-actions { margin-top: 10px; }
 .result-actions .primary-btn { margin: 0; justify-content: center; }
-.ai-handoff { max-width: 850px; margin: 0 auto; padding: 18px 20px; border: 1px solid rgba(202,170,114,.22); border-radius: 18px; background: rgba(202,170,114,.06); color: #d8cede; line-height: 1.65; font-size: 13px; }
-.ai-handoff strong { color: var(--accent-soft); }
+.ai-handoff {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 22px 24px;
+  border: 2px solid rgba(230,209,166,.86);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(202,170,114,.27), rgba(147,118,217,.17));
+  color: #f5edf9;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.7;
+  letter-spacing: -.018em;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 16px 38px rgba(0,0,0,.32);
+  text-shadow: 0 1px 12px rgba(0,0,0,.45);
+}
+.ai-handoff strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #fff8e8;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.4;
+  letter-spacing: -.03em;
+}
+.ai-handoff br { display: none; }
+.result-share-zone [data-copy-prompt] {
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #d7bd88, #b98a52);
+  color: #1b130b;
+  font-weight: 800;
+}
+.result-share-zone [data-copy-prompt]:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
 .followup-results { display: grid; gap: 28px; margin: 8px 0 32px; }
 .followup-result { padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: rgba(255,255,255,.025); }
 .followup-result-head { max-width: 760px; margin: 0 auto 8px; text-align: center; }
@@ -517,7 +569,10 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   .followup-mode-grid { grid-template-columns: 1fr; }
   .followup-zone, .followup-result { padding: 18px; }
   .followup-result .revealed-card { width: min(170px, 43vw); }
-  #resultView .section-heading { margin-bottom: 10px; }
+  #resultView .section-heading { margin-bottom: 14px; }
+  #resultView > .result-step-guide { margin-bottom: 20px; }
+  #resultView > .selected-cards { margin-bottom: 24px; }
+  #resultView > .followup-skip-guide { margin-bottom: 20px; }
   .result-share-zone { margin: -8px auto 20px; top: 0; }
   .image-preview-wrap { max-height: 40vh; }
 }
@@ -1110,7 +1165,7 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
       <div class="selected-cards" id="selectedCards"></div>
       <div class="followup-results" id="followUpResults"></div>
 
-      <p class="followup-skip-guide">추가로 궁금한 부분이 없다면 아래로 내려 결과 이미지를 저장하고 AI 질문을 복사해주세요.</p>
+      <p class="followup-skip-guide">추가 질문이 없다면 아래 꼬리 질문은 건너뛰고, 화면 하단의 ‘결과 이미지 PNG 저장’과 ‘AI 질문 복사’ 버튼을 이용해주세요.</p>
 
       <section class="followup-zone" aria-labelledby="followUpTitle">
         <p class="eyebrow">FOLLOW-UP READING</p>
