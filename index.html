@@ -795,6 +795,42 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   }
 }
 
+
+/* Instagram in-app browser: screenshot-only image preview */
+.image-dialog.instagram-capture-mode {
+  width: min(860px, calc(100% - 12px));
+  max-height: calc(100dvh - 12px);
+  padding: 18px;
+}
+.image-dialog.instagram-capture-mode .dialog-head { margin-bottom: 12px; }
+.image-dialog.instagram-capture-mode .image-save-note {
+  margin: 0 0 10px;
+  text-align: center;
+  font-weight: 720;
+}
+.image-dialog.instagram-capture-mode .image-preview-wrap {
+  max-height: calc(100dvh - 170px);
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+}
+.image-dialog.instagram-capture-mode .image-preview {
+  width: 100%;
+  max-width: none;
+  border-radius: 10px;
+}
+@media (max-width: 560px) {
+  .image-dialog.instagram-capture-mode {
+    width: calc(100% - 8px);
+    max-height: calc(100dvh - 8px);
+    padding: 12px;
+  }
+  .image-dialog.instagram-capture-mode .dialog-head h2 { font-size: 23px; }
+  .image-dialog.instagram-capture-mode .image-preview-wrap {
+    max-height: calc(100dvh - 148px);
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1328,7 +1364,7 @@ const el = {
   selectedCards: document.querySelector('#selectedCards'), followUpResults: document.querySelector('#followUpResults'), followUpQuestion: document.querySelector('#followUpQuestion'), followUpSuggestions: document.querySelector('#followUpSuggestions'), followUpLimitNote: document.querySelector('#followUpLimitNote'), resultQuestion: document.querySelector('#resultQuestion'), resultMeta: document.querySelector('#resultMeta'),
   historyDialog: document.querySelector('#historyDialog'), historyList: document.querySelector('#historyList'), historyTemplate: document.querySelector('#historyItemTemplate'),
   copyDialog: document.querySelector('#copyDialog'), copyPromptBox: document.querySelector('#copyPromptBox'),
-  imageDialog: document.querySelector('#imageDialog'), resultImagePreview: document.querySelector('#resultImagePreview'), resultImageDownloadLink: document.querySelector('#resultImageDownloadLink'), imageSaveNote: document.querySelector('#imageSaveNote'), openImageButton: document.querySelector('[data-open-image]')
+  imageDialog: document.querySelector('#imageDialog'), resultImagePreview: document.querySelector('#resultImagePreview'), resultImageDownloadLink: document.querySelector('#resultImageDownloadLink'), imageSaveNote: document.querySelector('#imageSaveNote'), openImageButton: document.querySelector('[data-open-image]'), imageDialogActions: document.querySelector('.image-dialog-actions')
 };
 
 let activeResultImageUrl = '';
@@ -2151,14 +2187,10 @@ function getSaveEnvironment() {
 
 function getImageSaveGuide(environment = getSaveEnvironment(), shareAvailable = canSharePreparedImage()) {
   if (environment.instagram) {
-    return shareAvailable
-      ? '인스타그램에서는 PNG 다운로드와 길게 눌러 저장이 제한될 수 있습니다. ‘이미지 공유·저장’을 눌러 저장을 시도하고, 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.'
-      : '인스타그램에서는 PNG 다운로드와 길게 눌러 저장이 제한될 수 있습니다. 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.';
+    return '인스타그램에서는 아래 미리보기 이미지를 화면 캡처해주세요.';
   }
   if (environment.kakao) {
-    return shareAvailable
-      ? '카카오톡에서는 PNG 다운로드가 제한될 수 있습니다. ‘이미지 공유·저장’을 눌러 저장을 시도하고, 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.'
-      : '카카오톡에서는 PNG 다운로드가 제한될 수 있습니다. 저장되지 않으면 아래 미리보기 이미지를 화면 캡처해주세요.';
+    return '카카오톡에서는 아래 미리보기 이미지를 꾹 눌러 저장해주세요.';
   }
   if (environment.ios) {
     return shareAvailable
@@ -2207,6 +2239,15 @@ function triggerDirectImageDownload() {
 }
 
 function updateImageSaveControls(environment = getSaveEnvironment()) {
+  el.imageDialog.classList.toggle('instagram-capture-mode', environment.instagram);
+
+  if (environment.instagram || environment.kakao) {
+    el.imageDialogActions.style.display = 'none';
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    return;
+  }
+
+  el.imageDialogActions.style.removeProperty('display');
   const prefersShare = environment.inApp || environment.ios;
   el.resultImageDownloadLink.textContent = prefersShare && canSharePreparedImage()
     ? '이미지 공유·저장'
@@ -2240,6 +2281,16 @@ async function downloadResultImage() {
     updateImageSaveControls(environment);
     if (!el.imageDialog.open) el.imageDialog.showModal();
 
+    if (environment.instagram) {
+      toast('미리보기 이미지를 화면 캡처해주세요.');
+      return;
+    }
+
+    if (environment.kakao) {
+      toast('미리보기 이미지를 꾹 눌러 저장해주세요.');
+      return;
+    }
+
     if ((environment.inApp || environment.ios) && canSharePreparedImage()) {
       const shared = await sharePreparedImage();
       if (shared) {
@@ -2271,6 +2322,18 @@ async function triggerPreparedImageDownload(event) {
   }
 
   const environment = getSaveEnvironment();
+  if (environment.instagram) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('미리보기 이미지를 화면 캡처해주세요.');
+    return;
+  }
+
+  if (environment.kakao) {
+    el.imageSaveNote.textContent = getImageSaveGuide(environment);
+    toast('미리보기 이미지를 꾹 눌러 저장해주세요.');
+    return;
+  }
+
   if ((environment.inApp || environment.ios) && canSharePreparedImage()) {
     const shared = await sharePreparedImage();
     if (shared) toast('이미지 공유를 완료했습니다.');
