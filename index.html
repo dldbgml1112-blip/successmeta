@@ -947,6 +947,7 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
 
 /* Instagram in-app browser: screenshot-only, near-fullscreen preview. */
 .image-dialog.instagram-capture-mode {
+  --instagram-top-guard: max(56px, env(safe-area-inset-top, 0px));
   width: calc(100vw - 4px);
   max-width: none;
   height: calc(100dvh - 4px);
@@ -962,9 +963,9 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   position: sticky;
   top: 0;
   z-index: 30;
-  min-height: 42px;
+  min-height: calc(42px + var(--instagram-top-guard));
   margin: 0;
-  padding: 0 2px 2px;
+  padding: var(--instagram-top-guard) 2px 2px;
   align-items: center;
   background: #171221;
 }
@@ -981,6 +982,7 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   place-items: center;
   border-radius: 50%;
   background: rgba(255,255,255,.07);
+  pointer-events: auto !important;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -993,20 +995,25 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
   font-weight: 720;
 }
 .image-dialog.instagram-capture-mode .image-preview-wrap {
-  height: calc(100dvh - 94px);
+  height: calc(100dvh - 94px - var(--instagram-top-guard));
   max-height: none;
   margin: 0;
   padding: 0;
-  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   border-radius: 8px;
-  -webkit-overflow-scrolling: touch;
+  background: #0b0811;
 }
 .image-dialog.instagram-capture-mode .image-preview {
   display: block;
-  width: 100%;
-  min-width: 100%;
-  max-width: none;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
   height: auto;
+  max-height: 100%;
+  object-fit: contain;
   border-radius: 6px;
 }
 @media (max-width: 560px) {
@@ -1016,7 +1023,12 @@ h2 { margin: 0; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; }
     padding: 2px;
   }
   .image-dialog.instagram-capture-mode .image-preview-wrap {
-    height: calc(100dvh - 90px);
+    height: calc(100dvh - 90px - var(--instagram-top-guard) - 120px);
+  }
+}
+@media (max-width: 340px) {
+  .image-dialog.instagram-capture-mode .image-preview-wrap {
+    height: calc(100dvh - 90px - var(--instagram-top-guard) - 140px);
   }
 }
 
